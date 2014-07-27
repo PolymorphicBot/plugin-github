@@ -1,20 +1,12 @@
-import "dart:async";
-import "dart:io";
-import "dart:convert";
-
-import "package:http/http.dart" as http;
-import "package:irc/irc.dart";
-
-import 'package:polymorphic_bot/api.dart';
+part of github;
 
 var connected = false;
-
-APIConnector bot;
 
 var config;
 
 class GitHub {
   static String token = null;
+  static bool enabled = true;
 
   // Github IP range converted to regex
   static var IP_REGEX = new RegExp(r"192\.30\.25[2-5]\.[0-9]{1,3}");
@@ -67,11 +59,20 @@ class GitHub {
   }
 
   static void handle_request(HttpRequest request) {
-
+    
     if (!connected) {
       request.response.statusCode = 500;
       request.response.write(JSON.encode({
         "error": "Bot is not connected"
+      }));
+      request.response.close();
+      return;
+    }
+    
+    if (!enabled) {
+      request.response.statusCode = 200;
+      request.response.write(JSON.encode({
+        "error": "GitHub is not enabled."
       }));
       request.response.close();
       return;
@@ -376,6 +377,10 @@ class GitHub {
   }
 
   static void register_github_hooks([String user = "DirectMyFile", String irc_user, String channel = "EsperNet:#directcode", String token]) {
+    if (!enabled) {
+      bot.message(networkOf(channel), channelOf(channel), "${part_prefix("GitHub")} Sorry, GitHub is currently not enabled.");
+      return;
+    }
     var added_hook = false;
     var completer = new Completer();
     var repos = null;
@@ -385,6 +390,8 @@ class GitHub {
 
     GitHub.get("https://api.github.com/users/${user}/repos?per_page=500", api_token: token).then((response) {
 
+      print("GitHub: Got Response for List");
+      
       if (response.statusCode != 200) {
         bot.message(networkOf(channel), channelOf(channel), "[${Color.BLUE}GitHub${Color.RESET}] Failed to get repository list.");
         return;
@@ -404,12 +411,9 @@ class GitHub {
         var number = repos.indexOf(repo);
         new Future.delayed(new Duration(seconds: 1), () {
           GitHub.get(repo["hooks_url"], api_token: token).then((hresp) {
-            print("Fetched repository ${number} of ${repos.length}");
+            print("GitHub: Fetched Repo");
             if (hresp.statusCode != 200) {
               var m = "[${Color.BLUE}GitHub${Color.RESET}] No Permissions for Repository '${repo["name"]}'";
-              if (irc_user != null) {
-                // bot.client.notice(irc_user, m);
-              }
               count++;
               return;
             }
@@ -494,7 +498,14 @@ class GitHub {
     var timer = new Timer.periodic(new Duration(seconds: 2), (_) {
       bot.config.then((conf) {
         config = conf;
+        if (config['github'] == null) {
+          enabled = false;
+          return;
+        }
         token = config["github"]["token"];
+        if (config['github']['enabled'] == false) {
+          enabled = false;
+        }
       });
     });
   }
@@ -512,6 +523,10 @@ class GitHub {
     }
     
     if (ISSUE_REGEX.hasMatch(message)) {
+      if (!enabled) {
+        // reply("${part_prefix("GitHub")} Sorry, GitHub is not currently enabled.");
+        return;
+      }
       for (var match in ISSUE_REGEX.allMatches(message)) {
         var url = "https://api.github.com/repos/${match[1]}/${match[2]}/issues/${match[3]}";
         GitHub.get(url).then((http.Response response) {
@@ -556,6 +571,12 @@ class GitHub {
     }
     
     if (REPO_REGEX.hasMatch(message)) {
+      
+      if (!enabled) {
+        // reply("${part_prefix("GitHub")} Sorry, GitHub is not currently enabled.");
+        return;
+      }
+      
       for (var match in REPO_REGEX.allMatches(message)) {
 
         var it = match[0];
@@ -592,7 +613,7 @@ class GitHub {
           var default_branch = json["default_branch"];
           var msg = "${part_prefix("GitHub")} ";
 
-          if (description != null) {
+          if (description != null && description.isNotEmpty) {
             msg += "${description}";
             reply(msg);
           }
