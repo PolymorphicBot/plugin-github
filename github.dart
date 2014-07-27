@@ -389,8 +389,6 @@ class GitHub {
     var ran_complete = false;
 
     GitHub.get("https://api.github.com/users/${user}/repos?per_page=500", api_token: token).then((response) {
-
-      print("GitHub: Got Response for List");
       
       if (response.statusCode != 200) {
         bot.message(networkOf(channel), channelOf(channel), "[${Color.BLUE}GitHub${Color.RESET}] Failed to get repository list.");
@@ -411,7 +409,6 @@ class GitHub {
         var number = repos.indexOf(repo);
         new Future.delayed(new Duration(seconds: 1), () {
           GitHub.get(repo["hooks_url"], api_token: token).then((hresp) {
-            print("GitHub: Fetched Repo");
             if (hresp.statusCode != 200) {
               var m = "[${Color.BLUE}GitHub${Color.RESET}] No Permissions for Repository '${repo["name"]}'";
               count++;
