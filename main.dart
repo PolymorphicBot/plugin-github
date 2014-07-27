@@ -27,11 +27,52 @@ void main(List<String> args, port) {
       case "message":
         handle_message(data);
         break;
+      case "bot-join":
+        handle_team_chan(data);
+        break;
     }
   });
   
   bot.config.then((config) {
     server_listen(config['github']['port']);
+  });
+}
+
+Map<String, Object> get chan_admin_conf {
+  if (config['github']['channel_admin'] != null) {
+    return config['github']['channel_admin'];
+  } else {
+    return null;
+  }
+}
+
+void handle_team_chan(data) {
+  if (!GitHub.enabled) {
+    return;
+  }
+  var conf = chan_admin_conf;
+  var id = data['network'] + ":" + data['channel'];
+  if (conf != null && conf['in'].contains(id)) {
+    if (!conf['enabled']) return;
+    GitHub.team_members("https://api.github.com/teams/${conf['ops_team']}").then((members) {
+      for (var member in members) {
+        var name = config['github']['users'].containsKey(member['login']) ? config['github']['users'][member['login']] : member['login'];
+        sendRaw(data['network'], "MODE ${data['channel']} +o ${name}");
+      }
+    });
+    GitHub.team_members("https://api.github.com/teams/${conf['voices_team']}").then((members) {
+      for (var member in members) {
+        var name = config['github']['users'].containsKey(member['login']) ? config['github']['users'][member['login']] : member['login'];
+        sendRaw(data['network'], "MODE ${data['channel']} +v ${name}");
+      }
+    });
+  }
+}
+
+void sendRaw(String network, String line) {
+  bot.send("raw", {
+    "network": network,
+    "line": line
   });
 }
 
@@ -52,6 +93,10 @@ void handle_command(data) {
   }
   
   var chanid = "${network}:${target}";
+  
+  if (!GitHub.enabled && command != "gh-enabled") {
+    return;
+  }
 
   switch (command) {
     case "gh-hooks":
@@ -125,6 +170,57 @@ void handle_command(data) {
           break;
       }
       
+      break;
+    case "gh-teams":
+      var org = config['github']['organization'];
+      if (org == null) {
+        reply("${part_prefix("GitHub Teams")} No Organization Configured");
+        return;
+      }
+      GitHub.teams(org).then((teams) {
+        var names = teams.map((team) => team['name']);
+        reply("${part_prefix("GitHub Teams")} ${names.join(", ")}");
+      });
+      break;
+    case "gh-members":
+      if (args.length != 1) {
+        reply("> Usage: gh-members <team>");
+        return;
+      }
+      var org = config['github']['organization'];
+      
+      if (org == null) {
+        reply("${part_prefix("GitHub Teams")} No Organization Configured");
+        return;
+      }
+      
+      var team = args[0];
+      GitHub.teams(org).then((teams) {
+        if (teams == null) {
+          reply("${part_prefix("GitHub Teams")} Failed to get team.");
+          return;
+        }
+        
+        var teamz = {};
+        
+        teams.forEach((team) {
+          teamz[team['name']] = team;
+        });
+        
+        if (!teamz.containsKey(team)) {
+          reply("${part_prefix("GitHub Teams")} No Such Team '${team}'");
+          return;
+        }
+        
+        GitHub.team_members(teamz[team]['url']).then((members) {
+          if (members == null) {
+            reply("${part_prefix("GitHub Teams")} Failed to get team members.");
+            return;
+          }
+          var names = members.map((member) => member['login']);
+          reply("${part_prefix("GitHub Teams")} ${team}: ${names.join(", ")}");
+        });
+      });
       break;
   }
 }

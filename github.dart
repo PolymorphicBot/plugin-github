@@ -627,6 +627,24 @@ class GitHub {
       }
     }
   }
+  
+  static Future<List<Map<String, Object>>> teams(String organization) {
+    return get("https://api.github.com/orgs/${organization}/teams").then((response) {
+      if (response.statusCode != 200) {
+        return null;
+      }
+      return JSON.decode(response.body);
+    });
+  }
+  
+  static Future<List<Map<String, Object>>> team_members(String url) {
+    return get("${url}/members").then((response) {
+      if (response.statusCode != 200) {
+        return null;
+      }
+      return JSON.decode(response.body);
+    });
+  }
 }
 
 Future<String> google_shorten(String url) {
