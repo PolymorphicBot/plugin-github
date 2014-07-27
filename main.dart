@@ -66,7 +66,7 @@ void handle_team_chan(data) {
       GitHub.team_members("https://api.github.com/teams/${conf['ops_team']}").then((members) {
         for (var member in members) {
           var name = config['github']['users'].containsKey(member['login']) ? config['github']['users'][member['login']] : member['login'];
-          if (!chan_info['ops'].map((it) => it.toLowerCase()).contains(name.toLowerCase())) {
+          if (!chan_info['ops'].map((it) => it.toLowerCase()).contains(name.toLowerCase()) && chan_info['members'].contains(name)) {
             sendRaw(data['network'], "MODE ${data['channel']} +o ${name}");
           }
         }
@@ -74,7 +74,7 @@ void handle_team_chan(data) {
       GitHub.team_members("https://api.github.com/teams/${conf['voices_team']}").then((members) {
         for (var member in members) {
           var name = config['github']['users'].containsKey(member['login']) ? config['github']['users'][member['login']] : member['login'];
-          if (!chan_info['voices'].map((it) => it.toLowerCase()).contains(name.toLowerCase())) {
+          if (!chan_info['voices'].map((it) => it.toLowerCase()).contains(name.toLowerCase()) && chan_info['members'].contains(name)) {
             sendRaw(data['network'], "MODE ${data['channel']} +v ${name}");
           }
         }
