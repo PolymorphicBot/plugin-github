@@ -30,6 +30,9 @@ void main(List<String> args, port) {
       case "bot-join":
         handle_team_chan(data);
         break;
+      case "join":
+        handle_team_chan(data);
+        break;
     }
   });
   
@@ -46,6 +49,10 @@ Map<String, Object> get chan_admin_conf {
   }
 }
 
+Future<Map<String, Object>> chan_info(String network, String channel) {
+  return bot.get("channel", { "network": network, "channel": channel });
+}
+
 void handle_team_chan(data) {
   if (!GitHub.enabled) {
     return;
@@ -54,17 +61,24 @@ void handle_team_chan(data) {
   var id = data['network'] + ":" + data['channel'];
   if (conf != null && conf['in'].contains(id)) {
     if (!conf['enabled']) return;
-    GitHub.team_members("https://api.github.com/teams/${conf['ops_team']}").then((members) {
-      for (var member in members) {
-        var name = config['github']['users'].containsKey(member['login']) ? config['github']['users'][member['login']] : member['login'];
-        sendRaw(data['network'], "MODE ${data['channel']} +o ${name}");
-      }
-    });
-    GitHub.team_members("https://api.github.com/teams/${conf['voices_team']}").then((members) {
-      for (var member in members) {
-        var name = config['github']['users'].containsKey(member['login']) ? config['github']['users'][member['login']] : member['login'];
-        sendRaw(data['network'], "MODE ${data['channel']} +v ${name}");
-      }
+    sleep(new Duration(seconds: 2));
+    chan_info(data['network'], data['channel']).then((chan_info) {
+      GitHub.team_members("https://api.github.com/teams/${conf['ops_team']}").then((members) {
+        for (var member in members) {
+          var name = config['github']['users'].containsKey(member['login']) ? config['github']['users'][member['login']] : member['login'];
+          if (!chan_info['ops'].map((it) => it.toLowerCase()).contains(name.toLowerCase())) {
+            sendRaw(data['network'], "MODE ${data['channel']} +o ${name}");
+          }
+        }
+      });
+      GitHub.team_members("https://api.github.com/teams/${conf['voices_team']}").then((members) {
+        for (var member in members) {
+          var name = config['github']['users'].containsKey(member['login']) ? config['github']['users'][member['login']] : member['login'];
+          if (!chan_info['voices'].map((it) => it.toLowerCase()).contains(name.toLowerCase())) {
+            sendRaw(data['network'], "MODE ${data['channel']} +v ${name}");
+          }
+        }
+      });
     });
   }
 }
