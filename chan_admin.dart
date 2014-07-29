@@ -16,8 +16,9 @@ void handle_team_chan(data) {
   if (!GitHub.enabled) {
     return;
   }
+  
   var conf = chan_admin_conf;
-  var id = data['network'] + ":" + data['channel'];
+  var id = (data['network'] + ":" + data['channel']) as String;
   if (conf != null && conf['in'].contains(id)) {
     if (!conf['enabled']) return;
     sleep(new Duration(seconds: 2));

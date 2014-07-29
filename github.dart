@@ -12,7 +12,7 @@ class GitHub {
   static var IP_REGEX = new RegExp(r"192\.30\.25[2-5]\.[0-9]{1,3}");
 
   static var HOOK_URL = "http://bot.directcode.org:8020/github";
-  
+
   static var STATUS_CI = {};
 
   static List<String> events = ["push", "ping", "pull_request", "fork", "release", "issues", "commit_comment", "watch", "status", "team_add", "issue_comment", "gollum", "page_build", "public"];
@@ -21,7 +21,7 @@ class GitHub {
     if (api_token == null) {
       api_token = token;
     }
-    
+
     return http.get(url, headers: {
       "Authorization": "token ${api_token}",
       "Accept": "application/vnd.github.v3+json"
@@ -59,7 +59,7 @@ class GitHub {
   }
 
   static void handle_request(HttpRequest request) {
-    
+
     if (!connected) {
       request.response.statusCode = 500;
       request.response.write(JSON.encode({
@@ -68,7 +68,7 @@ class GitHub {
       request.response.close();
       return;
     }
-    
+
     if (!enabled) {
       request.response.statusCode = 200;
       request.response.write(JSON.encode({
@@ -321,7 +321,7 @@ class GitHub {
           var msg = "";
           var status = json["state"];
           var target_url = json["target_url"];
-          
+
           if (status == "pending" && STATUS_CI[target_url] == null) {
             STATUS_CI[target_url] = "pending";
           } else if (STATUS_CI[target_url] != null && STATUS_CI[target_url] == "pending" && status == "pending") {
@@ -329,7 +329,7 @@ class GitHub {
           } else if (STATUS_CI[target_url] == "pending" && status == "success" || status == "failure") {
             STATUS_CI.remove(target_url);
           }
-          
+
           if (status == "pending") {
             status = "${Color.DARK_GRAY}Pending${Color.RESET}.";
           } else if (status == "success") {
@@ -389,7 +389,7 @@ class GitHub {
     var ran_complete = false;
 
     GitHub.get("https://api.github.com/users/${user}/repos?per_page=500", api_token: token).then((response) {
-      
+
       if (response.statusCode != 200) {
         bot.message(networkOf(channel), channelOf(channel), "[${Color.BLUE}GitHub${Color.RESET}] Failed to get repository list.");
         return;
@@ -474,11 +474,11 @@ class GitHub {
       return gh_conf["default_channels"];
     }
   }
-  
+
   static String networkOf(String input) {
     return input.split(":")[0];
   }
-  
+
   static String channelOf(String input) {
     return input.split(":")[1];
   }
@@ -514,44 +514,50 @@ class GitHub {
     var target = data['target'];
     var from = data['from'];
     var network = data['network'];
-    
+
     void reply(String msg) {
       bot.message(network, target, msg);
     }
     
+    void require(String permission, void handle()) {
+      bot.permission((it) => handle(), network, target, from, permission);
+    }
+
     if (ISSUE_REGEX.hasMatch(message)) {
       if (!enabled) {
-        // reply("${part_prefix("GitHub")} Sorry, GitHub is not currently enabled.");
         return;
       }
-      for (var match in ISSUE_REGEX.allMatches(message)) {
-        var url = "https://api.github.com/repos/${match[1]}/${match[2]}/issues/${match[3]}";
-        GitHub.get(url).then((http.Response response) {
-          if (response.statusCode != 200) {
-            var repo = match[1] + "/" + match[2];
-            reply("${part_prefix("GitHub Issues")} Failed to fetch issue information (repo: ${repo}, issue: ${match[3]})");
-          } else {
-            var json = JSON.decode(response.body);
-            var msg = "${part_prefix("GitHub Issues")} ";
+      
+      require("info.issue", () {
+        for (var match in ISSUE_REGEX.allMatches(message)) {
+          var url = "https://api.github.com/repos/${match[1]}/${match[2]}/issues/${match[3]}";
+          GitHub.get(url).then((http.Response response) {
+            if (response.statusCode != 200) {
+              var repo = match[1] + "/" + match[2];
+              reply("${part_prefix("GitHub Issues")} Failed to fetch issue information (repo: ${repo}, issue: ${match[3]})");
+            } else {
+              var json = JSON.decode(response.body);
+              var msg = "${part_prefix("GitHub Issues")} ";
 
-            msg += "Issue #${json["number"]} '${json["title"]}' by ${json["user"]["login"]}";
-            reply(msg);
-            msg = "${part_prefix("GitHub Issues")} ";
+              msg += "Issue #${json["number"]} '${json["title"]}' by ${json["user"]["login"]}";
+              reply(msg);
+              msg = "${part_prefix("GitHub Issues")} ";
 
-            if (json["asignee"] != null) {
-              msg += "assigned to: ${json["assignee"]["login"]}, ";
+              if (json["asignee"] != null) {
+                msg += "assigned to: ${json["assignee"]["login"]}, ";
+              }
+
+              msg += "status: ${json["state"]}";
+
+              if (json["milestone"] != null) {
+                msg += ", milestone: ${json["milestone"]["title"]}";
+              }
+
+              reply(msg);
             }
-
-            msg += "status: ${json["state"]}";
-
-            if (json["milestone"] != null) {
-              msg += ", milestone: ${json["milestone"]["title"]}";
-            }
-
-            reply(msg);
-          }
-        });
-      }
+          });
+        }
+      });
     }
   }
 
@@ -562,69 +568,75 @@ class GitHub {
     var target = data['target'];
     var from = data['from'];
     var network = data['network'];
-    
+
+    void require(String permission, void handle()) {
+      bot.permission((it) => handle(), network, target, from, permission);
+    }
+
     void reply(String msg) {
       bot.message(network, target, msg);
     }
-    
+
     if (REPO_REGEX.hasMatch(message)) {
-      
+
       if (!enabled) {
         // reply("${part_prefix("GitHub")} Sorry, GitHub is not currently enabled.");
         return;
       }
-      
-      for (var match in REPO_REGEX.allMatches(message)) {
 
-        var it = match[0];
+      require("info.repository", () {
+        for (var match in REPO_REGEX.allMatches(message)) {
 
-        var user = match[1];
-        var repo = match[2];
+          var it = match[0];
 
-        var user_and_repo = "${user}/${repo}";
+          var user = match[1];
+          var repo = match[2];
 
-        var rest = it.substring(it.indexOf(user_and_repo) + user_and_repo.length).replaceAll(r"/", "");
+          var user_and_repo = "${user}/${repo}";
 
-        if (rest != "") {
-          return;
-        }
+          var rest = it.substring(it.indexOf(user_and_repo) + user_and_repo.length).replaceAll(r"/", "");
 
-        var url = "https://api.github.com/repos/${user_and_repo}";
-
-        GitHub.get(url).then((response) {
-          if (response.statusCode != 200) {
-            if (response.statusCode == 404) {
-              reply("${part_prefix("GitHub")} Repository does not exist: ${user_and_repo}");
-            } else {
-              reply("${part_prefix("GitHub")} Failed to get repository information (code: ${response.statusCode})");
-            }
+          if (rest != "") {
             return;
           }
-          var json = JSON.decode(response.body);
-          var description = json["description"];
-          var subscribers = json["subscribers_count"];
-          var stars = json["stargazers_count"];
-          var forks = json["forks_count"];
-          var open_issues = json["open_issues_count"];
-          var language = json["language"] == null ? "none" : json["language"];
-          var default_branch = json["default_branch"];
-          var msg = "${part_prefix("GitHub")} ";
 
-          if (description != null && description.isNotEmpty) {
-            msg += "${description}";
+          var url = "https://api.github.com/repos/${user_and_repo}";
+
+          GitHub.get(url).then((response) {
+            if (response.statusCode != 200) {
+              if (response.statusCode == 404) {
+                reply("${part_prefix("GitHub")} Repository does not exist: ${user_and_repo}");
+              } else {
+                reply("${part_prefix("GitHub")} Failed to get repository information (code: ${response.statusCode})");
+              }
+              return;
+            }
+            var json = JSON.decode(response.body);
+            var description = json["description"];
+            var subscribers = json["subscribers_count"];
+            var stars = json["stargazers_count"];
+            var forks = json["forks_count"];
+            var open_issues = json["open_issues_count"];
+            var language = json["language"] == null ? "none" : json["language"];
+            var default_branch = json["default_branch"];
+            var msg = "${part_prefix("GitHub")} ";
+
+            if (description != null && description.isNotEmpty) {
+              msg += "${description}";
+              reply(msg);
+            }
+
+            msg = "${part_prefix("GitHub")} ${subscribers} subscribers, ${stars} stars, ${forks} forks, ${open_issues} open issues";
             reply(msg);
-          }
 
-          msg = "${part_prefix("GitHub")} ${subscribers} subscribers, ${stars} stars, ${forks} forks, ${open_issues} open issues";
-          reply(msg);
-
-          msg = "${part_prefix("GitHub")} Language: ${language}, Default Branch: ${default_branch}";
-          reply(msg);
-        });
-      }
+            msg = "${part_prefix("GitHub")} Language: ${language}, Default Branch: ${default_branch}";
+            reply(msg);
+          });
+        }
+      });
     }
   }
-  
+
   static Future<List<Map<String, Object>>> teams(String organization) {
     return get("https://api.github.com/orgs/${organization}/teams").then((response) {
       if (response.statusCode != 200) {
@@ -633,7 +645,7 @@ class GitHub {
       return JSON.decode(response.body);
     });
   }
-  
+
   static Future<List<Map<String, Object>>> team_members(String url) {
     return get("${url}/members").then((response) {
       if (response.statusCode != 200) {
@@ -644,9 +656,16 @@ class GitHub {
   }
 }
 
-Future<String> google_shorten(String url) {
-  return bot.request("google", "shorten", { "url": url }).then((response) {
-    return response['shortened'];
+Future<String> google_shorten(String longUrl) {
+  var input = JSON.encode({
+    "longUrl": longUrl
+  });
+
+  return http.post("https://www.googleapis.com/urlshortener/v1/url?key=AIzaSyBNTRakVvRuGHn6AVIhPXE_B3foJDOxmBU", headers: {
+    "Content-Type": ContentType.JSON.toString()
+  }, body: input).then((http.Response response) {
+    Map<String, Object> resp = JSON.decoder.convert(response.body);
+    return new Future.value(resp["id"]);
   });
 }
 
