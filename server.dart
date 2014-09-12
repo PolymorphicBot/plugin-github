@@ -1,8 +1,8 @@
-part of github;
+part of ghbot;
 
 HttpServer server;
 
-void server_listen(int port) {
+void startHookServer(int port) {
   runZoned(() {
     HttpServer.bind(InternetAddress.ANY_IP_V4, port).then((HttpServer _server) {
       server = _server;
@@ -10,7 +10,7 @@ void server_listen(int port) {
       server.listen((HttpRequest request) {
         switch (request.uri.path) {
           case "/github":
-            GitHub.handle_request(request);
+            GHBot.handleHook(request);
             break;
           default:
             handle_unhandled_path(request);

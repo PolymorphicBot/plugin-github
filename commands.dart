@@ -1,6 +1,6 @@
-part of github;
+part of ghbot;
 
-void handle_command(data) {
+void handleCommand(data) {
   var network = data['network'] as String;
   var user = data['from'] as String;
   var target = data['target'] as String;
@@ -17,7 +17,7 @@ void handle_command(data) {
 
   var chanid = "${network}:${target}";
 
-  if (!GitHub.enabled && command != "gh-enabled") {
+  if (!GHBot.enabled && command != "gh-enabled") {
     return;
   }
 
@@ -30,17 +30,19 @@ void handle_command(data) {
         }
 
         var gh_user = args.length > 0 ? args[0] : "DirectMyFile";
-        var token = args.length == 2 ? args[1] : GitHub.token;
-        GitHub.register_github_hooks(gh_user, "${network}:${user}", chanid, token);
+        var token = args.length == 2 ? args[1] : GHBot.token;
+        GHBot.registerHooks(gh_user, "${network}:${user}", chanid, token);
       });
       break;
     case "gh-status":
       require("command.status", () {
-        http.get("https://status.github.com/api/status.json").then((response) {
-          var json = JSON.decode(response.body);
-          var msg = "${part_prefix("GitHub")} Status: ";
 
-          switch (json['status']) {
+        github.apiStatus().then((status) {
+          var state = status.status;
+
+          var msg = "${fancyPrefix("GitHub")} Status: ";
+
+          switch (state) {
             case "good":
               msg += "${Color.DARK_GREEN}Good${Color.RESET}";
               break;
@@ -59,12 +61,8 @@ void handle_command(data) {
     case "gh-limit":
     case "gh-limits":
       require("command.limits", () {
-        GitHub.get("https://api.github.com/").then((response) {
-          var limit = response.headers["x-ratelimit-limit"];
-          var remain = response.headers["x-ratelimit-remaining"];
-          var reset = response.headers["x-ratelimit-reset"];
-          var resets = new DateTime.fromMillisecondsSinceEpoch(int.parse(reset) * 1000);
-          reply("${part_prefix("GitHub")} Limit: ${limit}, Remaining: ${remain}, Resets: ${resets}");
+        github.rateLimit().then((limit) {
+          reply("${fancyPrefix("GitHub")} Limit: ${limit.limit}, Remaining: ${limit.remaining}, Resets: ${friendlyDateTime(limit.resets)}");
         });
       });
       break;
@@ -85,18 +83,18 @@ void handle_command(data) {
 
         subcmd: switch (cmd) {
           case "toggle":
-            GitHub.enabled = !GitHub.enabled;
-            if (GitHub.enabled) {
-              reply("${part_prefix("GitHub")} Enabled");
+            GHBot.enabled = !GHBot.enabled;
+            if (GHBot.enabled) {
+              reply("${fancyPrefix("GitHub")} Enabled");
             } else {
-              reply("${part_prefix("GitHub")} Disabled");
+              reply("${fancyPrefix("GitHub")} Disabled");
             }
             break subcmd;
           case "status":
-            if (GitHub.enabled) {
-              reply("${part_prefix("GitHub")} Enabled");
+            if (GHBot.enabled) {
+              reply("${fancyPrefix("GitHub")} Enabled");
             } else {
-              reply("${part_prefix("GitHub")} Disabled");
+              reply("${fancyPrefix("GitHub")} Disabled");
             }
             break subcmd;
         }
@@ -106,57 +104,80 @@ void handle_command(data) {
     case "gh-teams":
 
       require("command.teams", () {
-        var org = config['github']['organization'];
+        String org = config['github']['organization'];
         if (org == null) {
-          reply("${part_prefix("GitHub Teams")} No Organization Configured");
+          reply("${fancyPrefix("GitHub Teams")} No Organization Configured");
           return;
         }
-        GitHub.teams(org).then((teams) {
-          var names = teams.map((team) => team['name']);
-          reply("${part_prefix("GitHub Teams")} ${names.join(", ")}");
+
+        github.teams(org).toList().then((teams) {
+          var names = teams.map((team) => team.name);
+          reply("${fancyPrefix("GitHub Teams")} ${names.join(", ")}");
         });
+
       });
       break;
     case "gh-members":
 
       require("command.members", () {
-        if (args.length != 1) {
+        if (args.length == 0) {
           reply("> Usage: gh-members <team>");
           return;
         }
         var org = config['github']['organization'];
 
         if (org == null) {
-          reply("${part_prefix("GitHub Teams")} No Organization Configured");
+          reply("${fancyPrefix("GitHub Teams")} No Organization Configured");
           return;
         }
 
-        var team = args[0];
-        GitHub.teams(org).then((teams) {
-          if (teams == null) {
-            reply("${part_prefix("GitHub Teams")} Failed to get team.");
+        var team = args.join(" ");
+
+        github.teams(org).toList().then((teams) {
+          var names = teams.map((it) => it.name);
+
+          if (!names.contains(team)) {
+            reply("${fancyPrefix("GitHub Teams")} No Such Team '${team}'");
             return;
           }
 
-          var teamz = {};
+          var t = teams.firstWhere((it) => it.name == team);
 
-          teams.forEach((team) {
-            teamz[team['name']] = team;
+          github.teamMembers(t.id).toList().then((members) {
+            var memberNames = members.map((it) => it.login);
+
+            reply("${fancyPrefix("GitHub Teams")} ${team}: ${memberNames.join(", ")}");
+          }).catchError((e) {
+            reply("${fancyPrefix("GitHub Teams")} Failed to get team members.");
           });
-
-          if (!teamz.containsKey(team)) {
-            reply("${part_prefix("GitHub Teams")} No Such Team '${team}'");
+        }).catchError((e) {
+          if (e is OrganizationNotFound) {
+            reply("${fancyPrefix("GitHub Teams")} No Such Organization");
             return;
           }
+        });
+      });
+      break;
+    case "gh-stars":
+      require("command.stars", () {
+        if (args.length == 0 || args.length > 2) {
+          reply("> Usage: gh-stars [user] <repository>");
+          return;
+        }
 
-          GitHub.team_members(teamz[team]['url']).then((members) {
-            if (members == null) {
-              reply("${part_prefix("GitHub Teams")} Failed to get team members.");
-              return;
-            }
-            var names = members.map((member) => member['login']);
-            reply("${part_prefix("GitHub Teams")} ${team}: ${names.join(", ")}");
-          });
+        var user = args.length == 2 ? args[0] : config['github']['organization'];
+        var repo = args.length == 1 ? args[0] : args[1];
+        
+        var slug = new RepositorySlug(user, repo);
+        
+        github.repository(slug).then((repo) {
+          var stars = repo.stargazersCount;
+          
+          reply("${fancyPrefix("GitHub")} Stars: ${stars}");
+        }).catchError((e) {
+          if (e is RepositoryNotFound) {
+            reply("${fancyPrefix("GitHub")} Repository Not Found");
+          }
         });
       });
       break;

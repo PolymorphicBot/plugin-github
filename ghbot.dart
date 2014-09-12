@@ -1,10 +1,14 @@
-part of github;
+part of ghbot;
 
 var connected = false;
 
-var config;
+Map<String, dynamic> config;
 
-class GitHub {
+List<Map> joinQueue = [];
+
+bool shouldHandleChanAdmin = false;
+
+class GHBot {
   static String token = null;
   static bool enabled = true;
 
@@ -58,7 +62,7 @@ class GitHub {
     }
   }
 
-  static void handle_request(HttpRequest request) {
+  static void handleHook(HttpRequest request) {
 
     if (!connected) {
       request.response.statusCode = 500;
@@ -165,7 +169,7 @@ class GitHub {
             var pusher = json['pusher']['name'];
             var commit_size = json['commits'].length;
 
-            GitHub.shorten(json["compare"]).then((compareUrl) {
+            GHBot.shorten(json["compare"]).then((compareUrl) {
               var committer = "${Color.OLIVE}$pusher${Color.RESET}";
               var commit = "commit${commit_size > 1 ? "s" : ""}";
               var branch = "${Color.DARK_GREEN}${json['ref'].split("/")[2]}${Color.RESET}";
@@ -219,7 +223,7 @@ class GitHub {
               url_long = json["head_commit"]["url"];
             }
 
-            GitHub.shorten(url_long).then((url) {
+            GHBot.shorten(url_long).then((url) {
               out += " - ${Color.PURPLE}${url}${Color.RESET}";
               message(out);
             });
@@ -232,7 +236,7 @@ class GitHub {
           var issueId = json["issue"]["number"];
           var issueName = json["issue"]["title"];
           var issueUrl = json["issue"]["html_url"];
-          GitHub.shorten(issueUrl).then((url) {
+          GHBot.shorten(issueUrl).then((url) {
             message("${Color.OLIVE}${by}${Color.RESET} ${action} the issue '${issueName}' (${issueId}) - ${url}");
           });
           break;
@@ -241,14 +245,14 @@ class GitHub {
           var action = json["action"];
           var author = json["sender"]["login"];
           var name = json["release"]["name"];
-          GitHub.shorten(json["release"]["html_url"]).then((url) {
+          GHBot.shorten(json["release"]["html_url"]).then((url) {
             message("${Color.OLIVE}${author}${Color.RESET} ${action} the release '${name}' - ${url}");
           });
           break;
 
         case "fork":
           var forkee = json["forkee"];
-          GitHub.shorten(forkee["html_url"]).then((url) {
+          GHBot.shorten(forkee["html_url"]).then((url) {
             message("${Color.OLIVE}${get_repo_owner(forkee)}${Color.RESET} created a fork at ${forkee["full_name"]} - ${url}");
           });
           break;
@@ -303,7 +307,7 @@ class GitHub {
           var action = json["action"];
 
           if (["opened", "reopened", "closed"].contains(action)) {
-            GitHub.shorten(pr["html_url"]).then((url) {
+            GHBot.shorten(pr["html_url"]).then((url) {
               message("${Color.OLIVE}${who}${Color.RESET} ${action} a Pull Request (#${number}) - ${url}");
             });
           }
@@ -312,7 +316,7 @@ class GitHub {
 
         case "public":
           var repo = json["repository"];
-          GitHub.shorten(repo["html_url"]).then((url) {
+          GHBot.shorten(repo["html_url"]).then((url) {
             message("${json["sender"]["login"]} made the repository public: ${url}");
           });
           break;
@@ -376,89 +380,39 @@ class GitHub {
     });
   }
 
-  static void register_github_hooks([String user = "DirectMyFile", String irc_user, String channel = "EsperNet:#directcode", String token]) {
+  static void registerHooks([String user = "DirectMyFile", String irc_user, String channel = "EsperNet:#directcode", String token]) {
     if (!enabled) {
-      bot.message(networkOf(channel), channelOf(channel), "${part_prefix("GitHub")} Sorry, GitHub is currently not enabled.");
+      bot.message(networkOf(channel), channelOf(channel), "${fancyPrefix("GitHub")} Sorry, GitHub is currently not enabled.");
       return;
     }
-    var added_hook = false;
-    var completer = new Completer();
-    var repos = null;
-    var count = 0;
 
-    var ran_complete = false;
-
-    GitHub.get("https://api.github.com/users/${user}/repos?per_page=500", api_token: token).then((response) {
-
-      if (response.statusCode != 200) {
-        bot.message(networkOf(channel), channelOf(channel), "[${Color.BLUE}GitHub${Color.RESET}] Failed to get repository list.");
-        return;
-      }
-
-      repos = JSON.decode(response.body) as List<Map<String, Object>>;
-
-      var timer;
-      timer = new Timer.periodic(new Duration(milliseconds: 20), (it) {
-        if (count == repos.length) {
-          completer.complete();
-          timer.cancel();
-        }
-      });
-
+    github.userRepositories(user).toList().then((repos) {
       repos.forEach((repo) {
-        var number = repos.indexOf(repo);
-        new Future.delayed(new Duration(seconds: 1), () {
-          GitHub.get(repo["hooks_url"], api_token: token).then((hresp) {
-            if (hresp.statusCode != 200) {
-              var m = "[${Color.BLUE}GitHub${Color.RESET}] No Permissions for Repository '${repo["name"]}'";
-              count++;
-              return;
+        repo.hooks().toList().then((hooks) {
+          bool shouldAddHook = true;
+
+          for (var hook in hooks) {
+            if (hook.url == HOOK_URL) {
+              shouldAddHook = false;
             }
+          }
 
-            var hooks = JSON.decode(hresp.body) as List<Map<String, Object>>;
-
-            var add_hook = true;
-
-            for (var hook in hooks) {
-              if (hook["config"]["url"] == HOOK_URL) {
-                add_hook = false;
-              }
-            }
-
-            if (add_hook) {
-              GitHub.post(repo["hooks_url"], JSON.encode({
-                "name": "web",
-                "active": true,
-                "config": {
-                  "url": HOOK_URL,
-                  "content_type": "json"
-                },
-                "events": GitHub.events
-              } as Map<String, Object>), api_token: token).then((resp) {
-                if (resp.statusCode != 201) {
-                  var m = "[${Color.BLUE}GitHub${Color.RESET}] Failed to add hook for ${repo["name"]}.";
-                  if (irc_user != null) {
-                    bot.message(networkOf(irc_user), channelOf(irc_user), m);
-                  }
-                } else {
-                  added_hook = true;
-                  bot.message(networkOf(channel), channelOf(channel), "[${Color.BLUE}GitHub${Color.RESET}] Added Hook for ${repo["name"]}.");
-                }
-
-                count++;
-              });
-            } else {
-              count++;
-            }
-          });
+          if (shouldAddHook) {
+            var req = new CreateHookRequest("DCBot", {
+              "url": HOOK_URL,
+              "content_type": "json",
+              "insecure_ssl": "1"
+            });
+            req.active = true;
+            req.events = events;
+            repo.createHook(req).then((Hook hook) {
+              bot.message(networkOf(channel), channelOf(channel), "[${Color.BLUE}GitHub${Color.RESET}] Added Hook for ${repo.name}.");
+            }).catchError((e) {
+              bot.message(networkOf(channel), channelOf(channel), "[${Color.BLUE}GitHub${Color.RESET}] Failed to Add Hook for ${repo.name}: ${e}");
+            });
+          }
         });
       });
-    });
-
-    completer.future.then((_) {
-      if (!added_hook) {
-        bot.message(networkOf(channel), channelOf(channel), "[${Color.BLUE}GitHub${Color.RESET}] Checked ${repos.length} repositories. No Hooks Added");
-      }
     });
   }
 
@@ -491,25 +445,9 @@ class GitHub {
     }
   }
 
-  static void initialize() {
-    var timer = new Timer.periodic(new Duration(seconds: 2), (_) {
-      bot.config.then((conf) {
-        config = conf;
-        if (config['github'] == null) {
-          enabled = false;
-          return;
-        }
-        token = config["github"]["token"];
-        if (config['github']['enabled'] == false) {
-          enabled = false;
-        }
-      });
-    });
-  }
-
   static RegExp ISSUE_REGEX = new RegExp(r"(?:.*)(?:https?)\:\/\/github\.com\/(.*)\/(.*)\/issues\/([0-9]+)(?:.*)");
 
-  static void handle_issue(data) {
+  static void handleIssue(data) {
     var message = data['message'];
     var target = data['target'];
     var from = data['from'];
@@ -518,7 +456,7 @@ class GitHub {
     void reply(String msg) {
       bot.message(network, target, msg);
     }
-    
+
     void require(String permission, void handle()) {
       bot.permission((it) => handle(), network, target, from, permission);
     }
@@ -527,21 +465,21 @@ class GitHub {
       if (!enabled) {
         return;
       }
-      
+
       require("info.issue", () {
         for (var match in ISSUE_REGEX.allMatches(message)) {
           var url = "https://api.github.com/repos/${match[1]}/${match[2]}/issues/${match[3]}";
-          GitHub.get(url).then((http.Response response) {
+          GHBot.get(url).then((http.Response response) {
             if (response.statusCode != 200) {
               var repo = match[1] + "/" + match[2];
-              reply("${part_prefix("GitHub Issues")} Failed to fetch issue information (repo: ${repo}, issue: ${match[3]})");
+              reply("${fancyPrefix("GitHub Issues")} Failed to fetch issue information (repo: ${repo}, issue: ${match[3]})");
             } else {
               var json = JSON.decode(response.body);
-              var msg = "${part_prefix("GitHub Issues")} ";
+              var msg = "${fancyPrefix("GitHub Issues")} ";
 
               msg += "Issue #${json["number"]} '${json["title"]}' by ${json["user"]["login"]}";
               reply(msg);
-              msg = "${part_prefix("GitHub Issues")} ";
+              msg = "${fancyPrefix("GitHub Issues")} ";
 
               if (json["asignee"] != null) {
                 msg += "assigned to: ${json["assignee"]["login"]}, ";
@@ -563,7 +501,7 @@ class GitHub {
 
   static RegExp REPO_REGEX = new RegExp(r"(?:.*)(?:https?)\:\/\/github\.com\/([A-Za-z0-9\-\.\_\(\)]+)\/([A-Za-z0-9\-\.\_\(\)]+)(?:\/?)(?:.*)");
 
-  static void handle_repo(data) {
+  static void handleRepository(data) {
     var message = data['message'];
     var target = data['target'];
     var from = data['from'];
@@ -602,12 +540,16 @@ class GitHub {
 
           var url = "https://api.github.com/repos/${user_and_repo}";
 
-          GitHub.get(url).then((response) {
+          github.repository(new RepositorySlug(user, repo)).then((repository) {
+
+          });
+
+          GHBot.get(url).then((response) {
             if (response.statusCode != 200) {
               if (response.statusCode == 404) {
-                reply("${part_prefix("GitHub")} Repository does not exist: ${user_and_repo}");
+                reply("${fancyPrefix("GitHub")} Repository does not exist: ${user_and_repo}");
               } else {
-                reply("${part_prefix("GitHub")} Failed to get repository information (code: ${response.statusCode})");
+                reply("${fancyPrefix("GitHub")} Failed to get repository information (code: ${response.statusCode})");
               }
               return;
             }
@@ -619,17 +561,17 @@ class GitHub {
             var open_issues = json["open_issues_count"];
             var language = json["language"] == null ? "none" : json["language"];
             var default_branch = json["default_branch"];
-            var msg = "${part_prefix("GitHub")} ";
+            var msg = "${fancyPrefix("GitHub")} ";
 
             if (description != null && description.isNotEmpty) {
               msg += "${description}";
               reply(msg);
             }
 
-            msg = "${part_prefix("GitHub")} ${subscribers} subscribers, ${stars} stars, ${forks} forks, ${open_issues} open issues";
+            msg = "${fancyPrefix("GitHub")} ${subscribers} subscribers, ${stars} stars, ${forks} forks, ${open_issues} open issues";
             reply(msg);
 
-            msg = "${part_prefix("GitHub")} Language: ${language}, Default Branch: ${default_branch}";
+            msg = "${fancyPrefix("GitHub")} Language: ${language}, Default Branch: ${default_branch}";
             reply(msg);
           });
         }
@@ -669,6 +611,6 @@ Future<String> google_shorten(String longUrl) {
   });
 }
 
-String part_prefix(String name) {
+String fancyPrefix(String name) {
   return "[${Color.BLUE}${name}${Color.RESET}]";
 }
