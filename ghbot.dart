@@ -15,7 +15,7 @@ class GHBot {
   // Github IP range converted to regex
   static var IP_REGEX = new RegExp(r"192\.30\.25[2-5]\.[0-9]{1,3}");
 
-  static var HOOK_URL = "http://bot.directcode.org:8020/github";
+  static var HOOK_URL = "http://97.89.142.11:8020/github";
 
   static var STATUS_CI = {};
 
@@ -134,7 +134,7 @@ class GHBot {
           m += "[${Color.BLUE}${repo_name}${Color.RESET}] ";
         }
         m += msg;
-        for (var chan in channels_for(repo_name)) {
+        for (var chan in channelsFor(repo_name)) {
           bot.message(networkOf(chan), channelOf(chan), m);
         }
       }
@@ -372,7 +372,7 @@ class GHBot {
         "status": "success",
         "information": {
           "repo_name": repo_name,
-          "channels": channels_for(repo_name),
+          "channels": channelsFor(repo_name),
           "handled": handled
         }
       }));
@@ -387,36 +387,43 @@ class GHBot {
     }
 
     github.userRepositories(user).toList().then((repos) {
+      var group = new FutureGroup();
+      var count = 0;
+      var groupA = new FutureGroup();
+      groupA.future.then((it) {
+        group.future.then((_) {
+          bot.message(networkOf(channel), channelOf(channel), "[${Color.BLUE}GitHub${Color.RESET}] Added ${count} Hook${count == 1 ? "" : "s"}");
+        });  
+      });
       repos.forEach((repo) {
-        repo.hooks().toList().then((hooks) {
+        groupA.add(repo.hooks().toList().then((hooks) {
           bool shouldAddHook = true;
 
           for (var hook in hooks) {
-            if (hook.url == HOOK_URL) {
+            if (hook.config['url'] == HOOK_URL) {
               shouldAddHook = false;
             }
           }
 
           if (shouldAddHook) {
-            var req = new CreateHookRequest("DCBot", {
+            var req = new CreateHookRequest("web", {
               "url": HOOK_URL,
               "content_type": "json",
               "insecure_ssl": "1"
-            });
-            req.active = true;
-            req.events = events;
-            repo.createHook(req).then((Hook hook) {
-              bot.message(networkOf(channel), channelOf(channel), "[${Color.BLUE}GitHub${Color.RESET}] Added Hook for ${repo.name}.");
+            }, active: true, events: events);
+            
+            group.add(repo.createHook(req).then((Hook hook) {
+              count++;
             }).catchError((e) {
               bot.message(networkOf(channel), channelOf(channel), "[${Color.BLUE}GitHub${Color.RESET}] Failed to Add Hook for ${repo.name}: ${e}");
-            });
+            }));
           }
-        });
+        }));
       });
     });
   }
 
-  static List<String> channels_for(String repo_id) {
+  static List<String> channelsFor(String repo_id) {
     var gh_conf = config["github"];
     if (gh_conf["channels"] != null && gh_conf["channels"].containsKey(repo_id)) {
       var chans = gh_conf["channels"][repo_id];

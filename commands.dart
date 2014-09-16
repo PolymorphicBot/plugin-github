@@ -58,6 +58,11 @@ void handleCommand(data) {
         });
       });
       break;
+    case "sync-channel":
+      reply("${fancyPrefix("GitHub")} Syncing Channel");
+      data['channel'] = target;
+      handleTeamChannel(data);
+      break;
     case "gh-limit":
     case "gh-limits":
       require("command.limits", () {

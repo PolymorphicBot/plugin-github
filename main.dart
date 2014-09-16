@@ -9,6 +9,7 @@ import "package:irc/irc.dart";
 import 'package:github/server.dart';
 import 'package:github/dates.dart';
 
+import 'package:quiver/async.dart';
 import 'package:polymorphic_bot/api.dart';
 
 part 'ghbot.dart';
@@ -45,6 +46,10 @@ void main(List<String> args, port) {
         } else {
           joinQueue.add(data);
         }
+        break;
+      case "shutdown":
+        print("[GitHub] Shutting Down");
+        server.close(force: true);
         break;
     }
   });
