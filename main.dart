@@ -18,7 +18,7 @@ part 'server.dart';
 part 'chan_admin.dart';
 part 'init.dart';
 
-APIConnector bot;
+BotConnector bot;
 
 GitHub github;
 
@@ -26,12 +26,12 @@ void main(List<String> args, port) {
   initGitHub();
   
   print("[GitHub] Loading Plugin");
-  bot = new APIConnector(port);
+  bot = new BotConnector(port);
   
   sleep(new Duration(seconds: 1));
   initialize();
-  
-  bot.handleEvent((data) {
+  var sub;
+  sub = bot.handleEvent((data) {
     switch (data['event']) {
       case "command":
         handleCommand(data);
@@ -50,6 +50,8 @@ void main(List<String> args, port) {
       case "shutdown":
         print("[GitHub] Shutting Down");
         server.close(force: true);
+        github.dispose();
+        sub.cancel();
         break;
     }
   });
