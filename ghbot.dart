@@ -15,7 +15,7 @@ class GHBot {
   // Github IP range converted to regex
   static var IP_REGEX = new RegExp(r"192\.30\.25[2-5]\.[0-9]{1,3}");
 
-  static var HOOK_URL = "http://97.89.142.11:8020/github";
+  static var HOOK_URL = "http://titan.directcode.org:8020/github";
 
   static var STATUS_CI = {};
 
