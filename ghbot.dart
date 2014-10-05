@@ -385,8 +385,8 @@ class GHBot {
       bot.message(networkOf(channel), channelOf(channel), "${fancyPrefix("GitHub")} Sorry, GitHub is currently not enabled.");
       return;
     }
-
-    github.userRepositories(user).toList().then((repos) {
+    
+    github.repositories.listUserRepositories(user).toList().then((repos) {
       var group = new FutureGroup();
       var count = 0;
       var groupA = new FutureGroup();
@@ -396,7 +396,7 @@ class GHBot {
         });  
       });
       repos.forEach((repo) {
-        groupA.add(repo.hooks().toList().then((hooks) {
+        groupA.add(github.repositories.listHooks(repo.slug()).toList().then((hooks) {
           bool shouldAddHook = true;
 
           for (var hook in hooks) {
@@ -406,13 +406,13 @@ class GHBot {
           }
 
           if (shouldAddHook) {
-            var req = new CreateHookRequest("web", {
+            var req = new CreateHook("web", {
               "url": HOOK_URL,
               "content_type": "json",
               "insecure_ssl": "1"
             }, active: true, events: events);
             
-            group.add(repo.createHook(req).then((Hook hook) {
+            group.add(github.repositories.createHook(repo.slug(), req).then((Hook hook) {
               count++;
             }).catchError((e) {
               bot.message(networkOf(channel), channelOf(channel), "[${Color.BLUE}GitHub${Color.RESET}] Failed to Add Hook for ${repo.name}: ${e}");
@@ -546,10 +546,6 @@ class GHBot {
           }
 
           var url = "https://api.github.com/repos/${user_and_repo}";
-
-          github.repository(new RepositorySlug(user, repo)).then((repository) {
-
-          });
 
           GHBot.get(url).then((response) {
             if (response.statusCode != 200) {

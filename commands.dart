@@ -37,7 +37,7 @@ void handleCommand(data) {
     case "gh-status":
       require("command.status", () {
 
-        github.apiStatus().then((status) {
+        github.misc.getApiStatus().then((status) {
           var state = status.status;
 
           var msg = "${fancyPrefix("GitHub")} Status: ";
@@ -66,7 +66,7 @@ void handleCommand(data) {
     case "gh-limit":
     case "gh-limits":
       require("command.limits", () {
-        github.rateLimit().then((limit) {
+        github.misc.getRateLimit().then((limit) {
           reply("${fancyPrefix("GitHub")} Limit: ${limit.limit}, Remaining: ${limit.remaining}, Resets: ${friendlyDateTime(limit.resets)}");
         });
       });
@@ -115,7 +115,7 @@ void handleCommand(data) {
           return;
         }
 
-        github.teams(org).toList().then((teams) {
+        github.organizations.listTeams(org).toList().then((teams) {
           var names = teams.map((team) => team.name);
           reply("${fancyPrefix("GitHub Teams")} ${names.join(", ")}");
         });
@@ -138,7 +138,7 @@ void handleCommand(data) {
 
         var team = args.join(" ");
 
-        github.teams(org).toList().then((teams) {
+        github.organizations.listTeams(org).toList().then((teams) {
           var names = teams.map((it) => it.name);
 
           if (!names.contains(team)) {
@@ -148,7 +148,7 @@ void handleCommand(data) {
 
           var t = teams.firstWhere((it) => it.name == team);
 
-          github.teamMembers(t.id).toList().then((members) {
+          github.organizations.listTeamMembers(t.id).toList().then((members) {
             var memberNames = members.map((it) => it.login);
 
             reply("${fancyPrefix("GitHub Teams")} ${team}: ${memberNames.join(", ")}");
@@ -175,7 +175,7 @@ void handleCommand(data) {
         
         var slug = new RepositorySlug(user, repo);
         
-        github.repository(slug).then((repo) {
+        github.repositories.getRepository(slug).then((repo) {
           var stars = repo.stargazersCount;
           
           reply("${fancyPrefix("GitHub")} Stars: ${stars}");

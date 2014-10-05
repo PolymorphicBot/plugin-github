@@ -17,7 +17,7 @@ void handleTeamChannel(data) {
   if (conf != null && conf['in'].contains(id)) {
     if (!conf['enabled']) return;
     getChannelInfo(data['network'], data['channel']).then((chan_info) {
-      github.teamMembers(conf['ops_team']).toList().then((members) {
+      github.organizations.listTeamMembers(conf['ops_team']).toList().then((members) {
         for (var member in members) {
           var name = config['github']['users'].containsKey(member.login) ? config['github']['users'][member.login] : member.login;
           if (!chan_info['ops'].map((it) => it.toLowerCase()).contains(name.toLowerCase()) && chan_info['members'].contains(name) || chan_info['voices'].contains(name)) {
@@ -26,7 +26,7 @@ void handleTeamChannel(data) {
         }
       });
       
-      github.teamMembers(conf['voices_team']).toList().then((members) {
+      github.organizations.listTeamMembers(conf['voices_team']).toList().then((members) {
         for (var member in members) {
           var name = config['github']['users'].containsKey(member.login) ? config['github']['users'][member.login] : member.login;
           if (!chan_info['voices'].map((it) => it.toLowerCase()).contains(name.toLowerCase()) && chan_info['members'].contains(name)) {
