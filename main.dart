@@ -5,7 +5,7 @@ import 'dart:convert';
 import 'dart:async';
 
 import 'package:http/http.dart' as http;
-import "package:irc/irc.dart";
+import "package:irc/client.dart";
 import 'package:github/server.dart';
 import 'package:github/dates.dart';
 
