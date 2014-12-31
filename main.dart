@@ -30,30 +30,21 @@ void main(List<String> args, port) {
   
   sleep(new Duration(seconds: 1));
   initialize();
-  var sub;
-  sub = bot.handleEvent((data) {
-    switch (data['event']) {
-      case "command":
-        handleCommand(data);
-        break;
-      case "message":
-        handleMessage(data);
-        break;
-      case "bot-join":
-      case "join":
-        if (shouldHandleChanAdmin) {
-          handleTeamChannel(data);
-        } else {
-          joinQueue.add(data);
-        }
-        break;
-      case "shutdown":
-        print("[GitHub] Shutting Down");
-        server.close(force: true);
-        github.dispose();
-        sub.cancel();
-        break;
+  
+  bot.on("command").listen(handleCommand);
+  bot.on("message").listen(handleMessage);
+  bot.on("join").listen((data) {
+    if (shouldHandleChanAdmin) {
+      handleTeamChannel(data);
+    } else {
+      joinQueue.add(data);
     }
+  });
+  
+  bot.onShutdown(() {
+    print("[GitHub] Shutting Down");
+    server.close(force: true);
+    github.dispose();
   });
   
   bot.config.then((config) {
