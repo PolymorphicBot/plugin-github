@@ -22,11 +22,11 @@ BotConnector bot;
 
 GitHub github;
 
-void main(List<String> args, port) {
+void main(List<String> args, Plugin plugin) {
   initGitHub();
   
   print("[GitHub] Loading Plugin");
-  bot = new BotConnector(port);
+  bot = plugin.getBot();
   
   sleep(new Duration(seconds: 1));
   initialize();
