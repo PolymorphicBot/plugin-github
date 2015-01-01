@@ -1,7 +1,7 @@
 part of ghbot;
 
 Future<Map<String, Object>> getChannelInfo(String network, String channel) {
-  return bot.get("channel", {
+  return plugin.get("channel", {
     "network": network,
     "channel": channel
   });

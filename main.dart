@@ -19,10 +19,11 @@ part 'chan_admin.dart';
 part 'init.dart';
 
 BotConnector bot;
-
+Plugin plugin;
 GitHub github;
 
-void main(List<String> args, Plugin plugin) {
+void main(List<String> args, Plugin myPlugin) {
+  plugin = myPlugin;
   initGitHub();
   
   print("[GitHub] Loading Plugin");
@@ -31,9 +32,9 @@ void main(List<String> args, Plugin plugin) {
   sleep(new Duration(seconds: 1));
   initialize();
   
-  bot.on("command").listen(handleCommand);
-  bot.on("message").listen(handleMessage);
-  bot.on("join").listen((data) {
+  plugin.on("command").listen(handleCommand);
+  plugin.on("message").listen(handleMessage);
+  plugin.on("join").listen((data) {
     if (shouldHandleChanAdmin) {
       handleTeamChannel(data);
     } else {
@@ -41,7 +42,7 @@ void main(List<String> args, Plugin plugin) {
     }
   });
   
-  bot.onShutdown(() {
+  plugin.onShutdown(() {
     print("[GitHub] Shutting Down");
     server.close(force: true);
     github.dispose();
@@ -55,7 +56,7 @@ void main(List<String> args, Plugin plugin) {
 }
 
 void sendRaw(String network, String line) {
-  bot.send("raw", {
+  plugin.send("raw", {
     "network": network,
     "line": line
   });
