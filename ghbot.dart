@@ -460,7 +460,7 @@ class GHBot {
     }
 
     void require(String permission, void handle()) {
-      bot.permission((it) => handle(), network, target, from, permission);
+      bot.checkPermission((it) => handle(), network, target, from, permission);
     }
 
     if (ISSUE_REGEX.hasMatch(message)) {
@@ -510,7 +510,7 @@ class GHBot {
     var network = data['network'];
 
     void require(String permission, void handle()) {
-      bot.permission((it) => handle(), network, target, from, permission);
+      bot.checkPermission((it) => handle(), network, target, from, permission);
     }
 
     void reply(String msg) {

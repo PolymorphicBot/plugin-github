@@ -12,7 +12,7 @@ void handleCommand(data) {
   }
 
   void require(String permission, void handle()) {
-    bot.permission((it) => handle(), network, target, user, permission);
+    bot.checkPermission((it) => handle(), network, target, user, permission);
   }
 
   var chanid = "${network}:${target}";
