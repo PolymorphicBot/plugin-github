@@ -130,7 +130,7 @@ class GHBot {
         }
         m += msg;
         for (var chan in channelsFor(repoName)) {
-          bot.message(networkOf(chan), channelOf(chan), m);
+          bot.sendMessage(networkOf(chan), channelOf(chan), m);
         }
       }
 
@@ -377,7 +377,7 @@ class GHBot {
 
   static void registerHooks([String user = "DirectMyFile", String irc_user, String channel = "EsperNet:#directcode", String token]) {
     if (!enabled) {
-      bot.message(networkOf(channel), channelOf(channel), "${fancyPrefix("GitHub")} Sorry, GitHub is currently not enabled.");
+      bot.sendMessage(networkOf(channel), channelOf(channel), "${fancyPrefix("GitHub")} Sorry, GitHub is currently not enabled.");
       return;
     }
     
@@ -387,7 +387,7 @@ class GHBot {
       var groupA = new FutureGroup();
       groupA.future.then((it) {
         group.future.then((_) {
-          bot.message(networkOf(channel), channelOf(channel), "[${Color.BLUE}GitHub${Color.RESET}] Added ${count} Hook${count == 1 ? "" : "s"}");
+          bot.sendMessage(networkOf(channel), channelOf(channel), "[${Color.BLUE}GitHub${Color.RESET}] Added ${count} Hook${count == 1 ? "" : "s"}");
         });  
       });
       repos.forEach((repo) {
@@ -410,7 +410,7 @@ class GHBot {
             group.add(github.repositories.createHook(repo.slug(), req).then((Hook hook) {
               count++;
             }).catchError((e) {
-              bot.message(networkOf(channel), channelOf(channel), "[${Color.BLUE}GitHub${Color.RESET}] Failed to Add Hook for ${repo.name}: ${e}");
+              bot.sendMessage(networkOf(channel), channelOf(channel), "[${Color.BLUE}GitHub${Color.RESET}] Failed to Add Hook for ${repo.name}: ${e}");
             }));
           }
         }));
@@ -456,7 +456,7 @@ class GHBot {
     var network = data['network'];
 
     void reply(String msg) {
-      bot.message(network, target, msg);
+      bot.sendMessage(network, target, msg);
     }
 
     void require(String permission, void handle()) {
@@ -514,7 +514,7 @@ class GHBot {
     }
 
     void reply(String msg) {
-      bot.message(network, target, msg);
+      bot.sendMessage(network, target, msg);
     }
 
     if (REPO_REGEX.hasMatch(message)) {

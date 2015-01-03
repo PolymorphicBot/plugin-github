@@ -8,7 +8,7 @@ void handleCommand(data) {
   var args = data['args'] as List<String>;
 
   void reply(String message) {
-    bot.message(network, target, message);
+    bot.sendMessage(network, target, message);
   }
 
   void require(String permission, void handle()) {
