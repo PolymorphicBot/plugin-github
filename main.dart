@@ -56,10 +56,7 @@ void main(List<String> args, Plugin myPlugin) {
 }
 
 void sendRaw(String network, String line) {
-  plugin.send("raw", {
-    "network": network,
-    "line": line
-  });
+  bot.sendRawLine(network, line);
 }
 
 void handleMessage(data) {
