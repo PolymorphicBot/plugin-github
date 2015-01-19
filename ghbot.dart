@@ -104,9 +104,10 @@ class GHBot {
       request.response.close();
       return;
     }
+    
     var address = request.connectionInfo.remoteAddress.address;
 
-    if (!IP_REGEX.hasMatch(address)) {
+    if (!IP_REGEX.hasMatch(address) && address != "127.0.0.1") {
       print("$address was rejected from the server");
       request.response
         ..statusCode = 403
