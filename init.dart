@@ -24,10 +24,6 @@ void initialize() {
       }
 
       shouldHandleChanAdmin = true;
-
-      while (joinQueue.isNotEmpty) {
-        handleTeamChannel(joinQueue.removeAt(0));
-      }
     });
   };
   new Timer.periodic(new Duration(seconds: 60), update);
