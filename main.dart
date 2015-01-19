@@ -30,6 +30,7 @@ void main(List<String> args, Plugin p) => p.load();
 @Start()
 void start() {
   initGitHub();
+  bot = plugin.getBot();
   
   print("[GitHub] Loading Plugin");
   
