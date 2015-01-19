@@ -29,6 +29,8 @@ void main(List<String> args, Plugin p) => p.load();
 
 @Start()
 void start() {
+  connected = true;
+  
   initGitHub();
   bot = plugin.getBot();
   
