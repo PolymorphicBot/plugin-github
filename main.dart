@@ -25,7 +25,9 @@ Plugin plugin;
 
 GitHub github;
 
-void main(List<String> args, Plugin p) => p.load();
+void main(List<String> args, port) {
+  polymorphic(args, port);
+}
 
 @Start()
 void start() {
