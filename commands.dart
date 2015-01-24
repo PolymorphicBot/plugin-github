@@ -1,17 +1,5 @@
 part of ghbot;
 
-@Command("gh-hooks", permission: "command.hooks")
-void hooksCommand(CommandEvent event) {
-  if (event.args.length > 2) {
-    event.reply("> Usage: gh-hooks [user] [token]");
-    return;
-  }
-
-  var user = event.args.length > 0 ? event.args[0] : "DirectMyFile";
-  var token = event.args.length == 2 ? event.args[1] : GHBot.token;
-  GHBot.registerHooks(user, "${event.network}:${user}", "${event.network}:${event.channel}", token);
-}
-
 @Command("gh-status", permission: "command.status")
 void statusCommand(CommandEvent event) {
   github.misc.getApiStatus().then((status) {
@@ -26,7 +14,7 @@ void statusCommand(CommandEvent event) {
         msg += "${Color.YELLOW}Minor Problems${Color.RESET}";
         break;
       case "major":
-        msg += "${Color.RESET}Major Problems${Color.RESET}";
+        msg += "${Color.RED}Major Problems${Color.RESET}";
         break;
     }
 
@@ -54,7 +42,8 @@ void membersCommand(CommandEvent event) {
     event.reply("> Usage: gh-members <team>");
     return;
   }
-  var org = config['github']['organization'];
+
+  var org = GHBot.getOrganization(event.network, event.channel);
 
   if (org == null) {
     event.reply("${fancyPrefix("GitHub Teams")} No Organization Configured");
@@ -123,7 +112,8 @@ void enabledCommand(CommandEvent event) {
 
 @Command("gh-teams", permission: "command.teams")
 void teamsCommand(CommandEvent event) {
-  String org = config['github']['organization'];
+  var org = GHBot.getOrganization(event.network, event.channel);
+
   if (org == null) {
     event.reply("${fancyPrefix("GitHub Teams")} No Organization Configured");
     return;
@@ -142,8 +132,8 @@ void starsCommand(CommandEvent event) {
     return;
   }
 
-  var user = event.args.length == 2 ? event.args[0] : config['github']['organization'];
-  var repo = event.args.length == 1 ? event.args[0] : event.args[1];
+  var user = event.args.length == 2 ? event.args[0] : GHBot.getOrganization(event.network, event.channel);
+var repo = event.args.length == 1 ? event.args[0] : event.args[1];
 
   var slug = new RepositorySlug(user, repo);
 

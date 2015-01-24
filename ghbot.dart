@@ -11,6 +11,7 @@ bool shouldHandleChanAdmin = false;
 class GHBot {
   static String token = null;
   static bool enabled = true;
+  static String organization;
 
   // GitHub IP range converted to regex
   static var IP_REGEX = new RegExp(r"192\.30\.25[2-5]\.[0-9]{1,3}");
@@ -18,6 +19,19 @@ class GHBot {
   static var HOOK_URL = "http://titan.directcode.org:8020/github";
 
   static var STATUS_CI = {};
+
+  static String getOrganization(String network, String channel) {
+    if (config["github"].containsKey("organizations")) {
+      var orgs = config["github"]["organizations"];
+      if (orgs.containsKey("${network}:${channel}")) {
+        return orgs["${network}:${channel}"];
+      } else if (orgs.containsKey("${channel}")) {
+        return orgs["${channel}"];
+      }
+    }
+
+    return organization;
+  }
 
   static List<String> events = [
     "push",
@@ -75,7 +89,7 @@ class GHBot {
     });
   }
 
-  static String get_repo_owner(Map<String, dynamic> repo) {
+  static String getRepoOwner(Map<String, dynamic> repo) {
     if (repo["owner"]["name"] != null) {
       return repo["owner"]["name"];
     } else {
@@ -123,14 +137,14 @@ class GHBot {
       var repoName;
 
       if (json["repository"] != null) {
-        var name = get_repo_name(json["repository"]);
+        var name = getRepoName(json["repository"]);
 
         var names = config["github"]["names"];
 
         if (names != null && names.containsKey(name)) {
           repoName = names[name];
         } else {
-          if (get_repo_owner(json["repository"]) != "DirectMyFile") {
+          if (getRepoOwner(json["repository"]) != "DirectMyFile") {
             repoName = name;
           } else {
             repoName = json["repository"]["name"];
@@ -140,10 +154,13 @@ class GHBot {
 
       void message(String msg, [bool prefix = true]) {
         var m = "";
+
         if (prefix) {
           m += "[${Color.BLUE}${repoName}${Color.RESET}] ";
         }
+
         m += msg;
+
         for (var chan in channelsFor(repoName)) {
           bot.sendMessage(networkOf(chan), channelOf(chan), m);
         }
@@ -228,6 +245,7 @@ class GHBot {
                 out += "Created branch";
               }
             }
+
             out += "${Color.DARK_GREEN}${branchName}${Color.RESET}";
 
             var longUrl = "";
@@ -271,7 +289,7 @@ class GHBot {
           var forkee = json["forkee"];
           GHBot.shorten(forkee["html_url"]).then((url) {
             message(
-                "${Color.OLIVE}${get_repo_owner(forkee)}${Color.RESET} created a fork at ${forkee["full_name"]} - ${url}");
+                "${Color.OLIVE}${getRepoOwner(forkee)}${Color.RESET} created a fork at ${forkee["full_name"]} - ${url}");
           });
           break;
         case "commit_comment":
@@ -387,7 +405,7 @@ class GHBot {
             msg +=
                 "${Color.OLIVE}${json["sender"]["login"]}${Color.RESET} has added ";
             msg +=
-                "${Color.OLIVE}${json["user"]["login"]} to the '${team["name"]}' team.";
+                "${Color.OLIVE}${json["user"]["login"]}${Color.RESET} to the '${team["name"]}' team.";
             message(msg);
           }
           break;
@@ -406,58 +424,6 @@ class GHBot {
         }
       }));
       request.response.close();
-    });
-  }
-
-  static void registerHooks([String user = "DirectMyFile", String irc_user,
-      String channel = "EsperNet:#directcode", String token]) {
-    if (!enabled) {
-      bot.sendMessage(networkOf(channel), channelOf(channel),
-          "${fancyPrefix("GitHub")} Sorry, GitHub is currently not enabled.");
-      return;
-    }
-
-    github.repositories.listUserRepositories(user).toList().then((repos) {
-      var group = new FutureGroup();
-      var count = 0;
-      var groupA = new FutureGroup();
-      groupA.future.then((it) {
-        group.future.then((_) {
-          bot.sendMessage(networkOf(channel), channelOf(channel),
-              "[${Color.BLUE}GitHub${Color.RESET}] Added ${count} Hook${count == 1 ? "" : "s"}");
-        });
-      });
-      repos.forEach((repo) {
-        groupA.add(github.repositories
-            .listHooks(repo.slug())
-            .toList()
-            .then((hooks) {
-          bool shouldAddHook = true;
-
-          for (var hook in hooks) {
-            if (hook.config['url'] == HOOK_URL) {
-              shouldAddHook = false;
-            }
-          }
-
-          if (shouldAddHook) {
-            var req = new CreateHook("web", {
-              "url": HOOK_URL,
-              "content_type": "json",
-              "insecure_ssl": "1"
-            }, active: true, events: events);
-
-            group.add(github.repositories
-                .createHook(repo.slug(), req)
-                .then((Hook hook) {
-              count++;
-            }).catchError((e) {
-              bot.sendMessage(networkOf(channel), channelOf(channel),
-                  "[${Color.BLUE}GitHub${Color.RESET}] Failed to Add Hook for ${repo.name}: ${e}");
-            }));
-          }
-        }));
-      });
     });
   }
 
@@ -482,7 +448,7 @@ class GHBot {
     return input.split(":")[1];
   }
 
-  static String get_repo_name(Map<String, dynamic> repo) {
+  static String getRepoName(Map<String, dynamic> repo) {
     if (repo["full_name"] != null) {
       return repo["full_name"];
     } else {
@@ -641,7 +607,7 @@ class GHBot {
     });
   }
 
-  static Future<List<Map<String, Object>>> team_members(String url) {
+  static Future<List<Map<String, Object>>> teamMembers(String url) {
     return get("${url}/members").then((response) {
       if (response.statusCode != 200) {
         return null;

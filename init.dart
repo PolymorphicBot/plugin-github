@@ -10,7 +10,9 @@ void initialize() {
         GHBot.enabled = false;
         return;
       }
+
       GHBot.token = config["github"]["token"];
+      GHBot.organization = config["github"]["organization"];
       
       if (config['github']['enabled'] == false) {
         GHBot.enabled = false;
