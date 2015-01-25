@@ -409,7 +409,31 @@ class GHBot {
 
   static RegExp ISSUE_REGEX = new RegExp(r"(?:.*)(?:https?)\:\/\/github\.com\/(.*)\/(.*)\/issues\/([0-9]+)(?:.*)");
   static RegExp PR_REGEX = new RegExp(r"(?:.*)(?:https?)\:\/\/github\.com\/(.*)\/(.*)\/pull\/([0-9]+)(?:.*)");
+  static RegExp GIST_REGEX = new RegExp(r"(?:.*)(?:https?)\:\/\/gist\.github\.com\/(.*)\/([A-Za-z1-9]*)");
 
+  static void handleGist(MessageEvent event) {
+    if (!GIST_REGEX.hasMatch(event.message) || !enabled) {
+      return;
+    }
+
+    for (var match in GIST_REGEX.allMatches(event.message)) {
+      var id = match[2];
+
+      github.gists.getGist(id).then((gist) {
+        if (gist.description != null && gist.description.isNotEmpty) {
+          event.reply("${fancyPrefix("Gists")} ${gist.description}");
+        }
+
+        event.reply("${fancyPrefix("Gists")} Creator: ${gist.user.login}");
+
+        if (gist.files.length == 1) {
+          event.reply("${fancyPrefix("Gists")} Name: ${gist.files.single.name}, Language: ${gist.files.single.language}");
+        } else {
+          event.reply("${fancyPrefix("Gists")} Files: ${gist.files.length}, Size: ${gist.description}");
+        }
+      });
+    }
+  }
 
   static void handleIssue(MessageEvent event) {
     var message = event.message;

@@ -61,4 +61,5 @@ void handleMessage(MessageEvent event) {
   GHBot.handleIssue(event);
   GHBot.handlePullRequest(event);
   GHBot.handleRepository(event);
+  GHBot.handleGist(event);
 }
