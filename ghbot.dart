@@ -441,8 +441,12 @@ class GHBot {
         if (issue.milestone != null) {
           msg += ", milestone: ${issue.milestone.title}";
         }
-
         event.reply(msg);
+        
+        if (issue.closedAt != null) {
+          var offset = offsetTimezone(issue.closedAt);
+          event.reply("${fancyPrefix('GitHub Issues')} Closed By: ${issue.closedBy.login} at ${friendlyDateTime(offset)}");
+        }
       }).catchError((e) {
         if (e is NotFound) {
           event.reply("${fancyPrefix("GitHub Issues")} Issue Not Found");
@@ -506,11 +510,13 @@ class GHBot {
 
         github.pullRequests.get(new RepositorySlug(user, repo), id).then((pr) {
           event.reply("${fancyPrefix('GitHub Pull Requests')} '${pr.title}' by ${pr.user.login}");
-          event.reply("${fancyPrefix('GitHub Pull Requests')} Created: ${friendlyDateTime(pr.createdAt)}");
+          var offsetCreated = offsetTimezone(pr.createdAt);
+          event.reply("${fancyPrefix('GitHub Pull Requests')} Status: ${pr.state}, Created: ${friendlyDateTime(offsetCreated)}");
           event.reply("${fancyPrefix('GitHub Pull Requests')} Additions: ${pr.additionsCount}, Deletions: ${pr.deletionsCount}");
-
+          
           if (pr.merged) {
-            event.reply("${fancyPrefix('GitHub Pull Requests')} Merged By: ${pr.mergedBy.login} at ${friendlyDateTime(pr.mergedAt)}");
+            var offset = offsetTimezone(pr.mergedAt);
+            event.reply("${fancyPrefix('GitHub Pull Requests')} Merged By: ${pr.mergedBy.login} at ${friendlyDateTime(offset)}");
           } else {
             event.reply("${fancyPrefix('GitHub Pull Requests')} Can be Merged: ${pr.mergeable}");
           }
