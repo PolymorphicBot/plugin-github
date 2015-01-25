@@ -445,7 +445,7 @@ class GHBot {
         
         if (issue.closedAt != null) {
           var offset = offsetTimezone(issue.closedAt);
-          event.reply("${fancyPrefix('GitHub Issues')} Closed By: ${issue.closedBy.login} at ${friendlyDateTime(offset)}");
+          event.reply("${fancyPrefix('GitHub Issues')} Closed By: ${issue.closedBy.login} on ${friendlyDateTime(offset)}");
         }
       }).catchError((e) {
         if (e is NotFound) {
@@ -516,7 +516,7 @@ class GHBot {
           
           if (pr.merged) {
             var offset = offsetTimezone(pr.mergedAt);
-            event.reply("${fancyPrefix('GitHub Pull Requests')} Merged By: ${pr.mergedBy.login} at ${friendlyDateTime(offset)}");
+            event.reply("${fancyPrefix('GitHub Pull Requests')} Merged By: ${pr.mergedBy.login} on ${friendlyDateTime(offset)}");
           } else {
             event.reply("${fancyPrefix('GitHub Pull Requests')} Can be Merged: ${pr.mergeable}");
           }
