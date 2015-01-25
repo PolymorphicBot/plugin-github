@@ -430,7 +430,8 @@ class GHBot {
           event.reply("${fancyPrefix("Gists")} Creator: ${gist.owner.login}");
           event.reply("${fancyPrefix("Gists")} Files: ${gist.files.map((it) => it.name).join(", ")}");
         }
-      });
+      }).catchError((e) {
+      });;
     }
   }
 
