@@ -13,11 +13,6 @@ class GHBot {
   static bool enabled = true;
   static String organization;
 
-  // GitHub IP range converted to regex
-  static var IP_REGEX = new RegExp(r"192\.30\.25[2-5]\.[0-9]{1,3}");
-
-  static var HOOK_URL = "http://titan.directcode.org:8020/github";
-
   static var STATUS_CI = {};
 
   static String getOrganization(String network, String channel) {
@@ -33,30 +28,14 @@ class GHBot {
     return organization;
   }
 
-  static List<String> events = [
-    "push",
-    "ping",
-    "pull_request",
-    "fork",
-    "release",
-    "issues",
-    "commit_comment",
-    "watch",
-    "status",
-    "team_add",
-    "issue_comment",
-    "gollum",
-    "page_build",
-    "public"
-  ];
+  static List<String> events = ["push", "ping", "pull_request", "fork", "release", "issues", "commit_comment", "watch", "status", "team_add", "issue_comment", "gollum", "page_build", "public"];
 
   static Future<http.Response> get(String url, {String api_token}) {
     if (api_token == null) {
       api_token = token;
     }
 
-    return http.get(url,
-        headers: {
+    return http.get(url, headers: {
       "Authorization": "token ${api_token}",
       "Accept": "application/vnd.github.v3+json"
     });
@@ -66,25 +45,20 @@ class GHBot {
     if (api_token == null) {
       api_token = token;
     }
-    return http.post(url,
-        headers: {
+    return http.post(url, headers: {
       "Authorization": "token ${api_token}",
       "Accept": "application/vnd.github.v3+json"
-    },
-        body: body);
+    }, body: body);
   }
 
   static Future<String> shorten(String input) {
-    return new HttpClient()
-        .postUrl(Uri.parse("http://git.io/?url=${Uri.encodeComponent(input)}"))
-        .then((HttpClientRequest request) {
+    return new HttpClient().postUrl(Uri.parse("http://git.io/?url=${Uri.encodeComponent(input)}")).then((HttpClientRequest request) {
       return request.close();
     }).then((HttpClientResponse response) {
       if (response.statusCode != 201) {
         return new Future.value(input);
       } else {
-        return new Future.value(
-            "http://git.io/${response.headers.value("Location").split("/").last}");
+        return new Future.value("http://git.io/${response.headers.value("Location").split("/").last}");
       }
     });
   }
@@ -100,32 +74,28 @@ class GHBot {
   static void handleHook(HttpRequest request) {
     if (!connected) {
       request.response.statusCode = 500;
-      request.response.write(JSON.encode({"error": "Bot is not connected"}));
+      request.response.write(JSON.encode({
+        "error": "Bot is not connected"
+      }));
       request.response.close();
       return;
     }
 
     if (!enabled) {
       request.response.statusCode = 200;
-      request.response.write(JSON.encode({"error": "GitHub is not enabled."}));
+      request.response.write(JSON.encode({
+        "error": "GitHub is not enabled."
+      }));
       request.response.close();
       return;
     }
 
     if (request.method != "POST") {
-      request.response.write(JSON.encode(
-          {"status": "failure", "error": "Only POST is Supported"}));
+      request.response.write(JSON.encode({
+        "status": "failure",
+        "error": "Only POST is Supported"
+      }));
       request.response.close();
-      return;
-    }
-    
-    var address = request.connectionInfo.remoteAddress.address;
-
-    if (!IP_REGEX.hasMatch(address) && address != "127.0.0.1") {
-      print("$address was rejected from the server");
-      request.response
-        ..statusCode = 403
-        ..close();
       return;
     }
 
@@ -179,7 +149,10 @@ class GHBot {
           if (refRegex.hasMatch(json["ref"])) {
             var match = refRegex.firstMatch(json["ref"]);
             var _type = match.group(1);
-            var type = ({"heads": "branch", "tags": "tag"}[_type]);
+            var type = ({
+              "heads": "branch",
+              "tags": "tag"
+            }[_type]);
             if (type == "branch") {
               isBranch = true;
               branchName = match.group(2);
@@ -196,21 +169,17 @@ class GHBot {
             GHBot.shorten(json["compare"]).then((compareUrl) {
               var committer = "${Color.OLIVE}$pusher${Color.RESET}";
               var commit = "commit${commit_size > 1 ? "s" : ""}";
-              var branch =
-                  "${Color.DARK_GREEN}${json['ref'].split("/")[2]}${Color.RESET}";
+              var branch = "${Color.DARK_GREEN}${json['ref'].split("/")[2]}${Color.RESET}";
 
               var url = "${Color.PURPLE}${compareUrl}${Color.RESET}";
-              message(
-                  "$committer pushed ${Color.DARK_GREEN}$commit_size${Color.RESET} $commit to $branch - $url");
+              message("$committer pushed ${Color.DARK_GREEN}$commit_size${Color.RESET} $commit to $branch - $url");
 
               int tracker = 0;
               for (var commit in json['commits']) {
                 tracker++;
                 if (tracker > 5) break;
-                committer =
-                    "${Color.OLIVE}${commit['committer']['name']}${Color.RESET}";
-                var sha =
-                    "${Color.DARK_GREEN}${commit['id'].substring(0, 7)}${Color.RESET}";
+                committer = "${Color.OLIVE}${commit['committer']['name']}${Color.RESET}";
+                var sha = "${Color.DARK_GREEN}${commit['id'].substring(0, 7)}${Color.RESET}";
                 message("$committer $sha - ${commit['message']}");
               }
             });
@@ -218,13 +187,11 @@ class GHBot {
             if (json['repository']['fork']) break;
             String out = "";
             if (json['pusher'] != null) {
-              out +=
-                  "${Color.OLIVE}${json["pusher"]["name"]}${Color.RESET} tagged ";
+              out += "${Color.OLIVE}${json["pusher"]["name"]}${Color.RESET} tagged ";
             } else {
               out += "Tagged ";
             }
-            out +=
-                "${Color.DARK_GREEN}${json['head_commit']['id'].substring(0, 7)}${Color.RESET} as ";
+            out += "${Color.DARK_GREEN}${json['head_commit']['id'].substring(0, 7)}${Color.RESET} as ";
             out += "${Color.DARK_GREEN}${tagName}${Color.RESET}";
             message(out);
           } else if (isBranch) {
@@ -232,15 +199,13 @@ class GHBot {
             String out = "";
             if (json["deleted"]) {
               if (json["pusher"] != null) {
-                out +=
-                    "${Color.OLIVE}${json["pusher"]["name"]}${Color.RESET} deleted branch ";
+                out += "${Color.OLIVE}${json["pusher"]["name"]}${Color.RESET} deleted branch ";
               } else {
                 out += "Deleted branch";
               }
             } else {
               if (json["pusher"] != null) {
-                out +=
-                    "${Color.OLIVE}${json["pusher"]["name"]}${Color.RESET} created branch ";
+                out += "${Color.OLIVE}${json["pusher"]["name"]}${Color.RESET} created branch ";
               } else {
                 out += "Created branch";
               }
@@ -270,8 +235,7 @@ class GHBot {
           var issueName = json["issue"]["title"];
           var issueUrl = json["issue"]["html_url"];
           GHBot.shorten(issueUrl).then((url) {
-            message(
-                "${Color.OLIVE}${by}${Color.RESET} ${action} the issue '${issueName}' (${issueId}) - ${url}");
+            message("${Color.OLIVE}${by}${Color.RESET} ${action} the issue '${issueName}' (${issueId}) - ${url}");
           });
           break;
 
@@ -280,23 +244,20 @@ class GHBot {
           var author = json["sender"]["login"];
           var name = json["release"]["name"];
           GHBot.shorten(json["release"]["html_url"]).then((url) {
-            message(
-                "${Color.OLIVE}${author}${Color.RESET} ${action} the release '${name}' - ${url}");
+            message("${Color.OLIVE}${author}${Color.RESET} ${action} the release '${name}' - ${url}");
           });
           break;
 
         case "fork":
           var forkee = json["forkee"];
           GHBot.shorten(forkee["html_url"]).then((url) {
-            message(
-                "${Color.OLIVE}${getRepoOwner(forkee)}${Color.RESET} created a fork at ${forkee["full_name"]} - ${url}");
+            message("${Color.OLIVE}${getRepoOwner(forkee)}${Color.RESET} created a fork at ${forkee["full_name"]} - ${url}");
           });
           break;
         case "commit_comment":
           var who = json["sender"]["login"];
           var commit_id = json["comment"]["commit_id"].substring(0, 10);
-          message(
-              "${Color.OLIVE}${who}${Color.RESET} commented on commit ${commit_id}");
+          message("${Color.OLIVE}${who}${Color.RESET} commented on commit ${commit_id}");
           break;
         case "issue_comment":
           var issue = json["issue"];
@@ -304,8 +265,7 @@ class GHBot {
           var action = json["action"];
 
           if (action == "created") {
-            message(
-                "${Color.OLIVE}${sender["login"]}${Color.RESET} commented on issue #${issue["number"]}");
+            message("${Color.OLIVE}${sender["login"]}${Color.RESET} commented on issue #${issue["number"]}");
           }
 
           break;
@@ -318,8 +278,7 @@ class GHBot {
           var who = build["pusher"]["login"];
           var msg = "";
           if (build["error"]["message"] != null) {
-            msg +=
-                "${Color.OLIVE}${who}${Color.RESET} Page Build Failed (Message: ${build["error"]["message"]})";
+            msg += "${Color.OLIVE}${who}${Color.RESET} Page Build Failed (Message: ${build["error"]["message"]})";
             message(msg);
           }
           break;
@@ -330,8 +289,7 @@ class GHBot {
             var name = page["title"];
             var type = page["action"];
             var summary = page["summary"];
-            var msg =
-                "${Color.OLIVE}${who}${Color.RESET} ${type} '${name}' on the wiki";
+            var msg = "${Color.OLIVE}${who}${Color.RESET} ${type} '${name}' on the wiki";
             if (summary != null) {
               msg += " (${msg})";
             }
@@ -348,8 +306,7 @@ class GHBot {
 
           if (["opened", "reopened", "closed"].contains(action)) {
             GHBot.shorten(pr["html_url"]).then((url) {
-              message(
-                  "${Color.OLIVE}${who}${Color.RESET} ${action} a Pull Request (#${number}) - ${url}");
+              message("${Color.OLIVE}${who}${Color.RESET} ${action} a Pull Request (#${number}) - ${url}");
             });
           }
 
@@ -358,8 +315,7 @@ class GHBot {
         case "public":
           var repo = json["repository"];
           GHBot.shorten(repo["html_url"]).then((url) {
-            message(
-                "${json["sender"]["login"]} made the repository public: ${url}");
+            message("${json["sender"]["login"]} made the repository public: ${url}");
           });
           break;
 
@@ -370,12 +326,9 @@ class GHBot {
 
           if (status == "pending" && STATUS_CI[targetUrl] == null) {
             STATUS_CI[targetUrl] = "pending";
-          } else if (STATUS_CI[targetUrl] != null &&
-              STATUS_CI[targetUrl] == "pending" &&
-              status == "pending") {
+          } else if (STATUS_CI[targetUrl] != null && STATUS_CI[targetUrl] == "pending" && status == "pending") {
             return;
-          } else if (STATUS_CI[targetUrl] == "pending" && status == "success" ||
-              status == "failure") {
+          } else if (STATUS_CI[targetUrl] == "pending" && status == "success" || status == "failure") {
             STATUS_CI.remove(targetUrl);
           }
 
@@ -402,10 +355,8 @@ class GHBot {
           var msg = "";
           if (json["user"] != null) {
             added_user = true;
-            msg +=
-                "${Color.OLIVE}${json["sender"]["login"]}${Color.RESET} has added ";
-            msg +=
-                "${Color.OLIVE}${json["user"]["login"]}${Color.RESET} to the '${team["name"]}' team.";
+            msg += "${Color.OLIVE}${json["sender"]["login"]}${Color.RESET} has added ";
+            msg += "${Color.OLIVE}${json["user"]["login"]}${Color.RESET} to the '${team["name"]}' team.";
             message(msg);
           }
           break;
@@ -427,10 +378,10 @@ class GHBot {
     });
   }
 
-  static List<String> channelsFor(String repo_id) {
+  static List<String> channelsFor(String id) {
     var ghConf = config["github"];
-    if (ghConf["channels"] != null && ghConf["channels"].containsKey(repo_id)) {
-      var chans = ghConf["channels"][repo_id];
+    if (ghConf["channels"] != null && ghConf["channels"].containsKey(id)) {
+      var chans = ghConf["channels"][id];
       if (chans is String) {
         chans = [chans];
       }
@@ -456,150 +407,125 @@ class GHBot {
     }
   }
 
-  static RegExp ISSUE_REGEX = new RegExp(
-      r"(?:.*)(?:https?)\:\/\/github\.com\/(.*)\/(.*)\/issues\/([0-9]+)(?:.*)");
+  static RegExp ISSUE_REGEX = new RegExp(r"(?:.*)(?:https?)\:\/\/github\.com\/(.*)\/(.*)\/issues\/([0-9]+)(?:.*)");
+  static RegExp PR_REGEX = new RegExp(r"(?:.*)(?:https?)\:\/\/github\.com\/(.*)\/(.*)\/pull\/([0-9]+)(?:.*)");
 
-  static void handleIssue(data) {
-    var message = data['message'];
-    var target = data['target'];
-    var from = data['from'];
-    var network = data['network'];
 
-    void reply(String msg) {
-      bot.sendMessage(network, target, msg);
+  static void handleIssue(MessageEvent event) {
+    var message = event.message;
+    var target = event.target;
+    var from = event.from;
+    var network = event.network;
+
+    if (!ISSUE_REGEX.hasMatch(message) || !enabled) {
+      return;
     }
 
-    void require(String permission, void handle()) {
-      bot.checkPermission((it) => handle(), network, target, from, permission);
-    }
+    for (var match in ISSUE_REGEX.allMatches(message)) {
+      var url = "https://api.github.com/repos/${match[1]}/${match[2]}/issues/${match[3]}";
+      var slug = new RepositorySlug(match[1], match[2]);
+      var id = int.parse(match[3]);
 
-    if (ISSUE_REGEX.hasMatch(message)) {
-      if (!enabled) {
-        return;
-      }
+      github.issues.get(slug, id).then((issue) {
+        event.reply("${fancyPrefix('GitHub Issues')} Issue #${issue.number} '${issue.title}' by ${issue.user.login}");
+        event.reply("${fancyPrefix('GitHub Issues')} Created: ${friendlyDateTime(issue.createdAt)}");
 
-      require("info.issue", () {
-        for (var match in ISSUE_REGEX.allMatches(message)) {
-          var url =
-              "https://api.github.com/repos/${match[1]}/${match[2]}/issues/${match[3]}";
-          GHBot.get(url).then((http.Response response) {
-            if (response.statusCode != 200) {
-              var repo = match[1] + "/" + match[2];
-              reply(
-                  "${fancyPrefix("GitHub Issues")} Failed to fetch issue information (repo: ${repo}, issue: ${match[3]})");
-            } else {
-              var json = JSON.decode(response.body);
-              var msg = "${fancyPrefix("GitHub Issues")} ";
+        var msg = "${fancyPrefix('GitHub Issues')} ";
 
-              msg +=
-                  "Issue #${json["number"]} '${json["title"]}' by ${json["user"]["login"]}";
-              reply(msg);
-              msg = "${fancyPrefix("GitHub Issues")} ";
+        if (issue.assignee != null) {
+          msg += "assigned to: ${issue.assignee.login}, ";
+        }
 
-              if (json["asignee"] != null) {
-                msg += "assigned to: ${json["assignee"]["login"]}, ";
-              }
+        msg += "status: ${issue.state}";
 
-              msg += "status: ${json["state"]}";
+        if (issue.milestone != null) {
+          msg += ", milestone: ${issue.milestone.title}";
+        }
 
-              if (json["milestone"] != null) {
-                msg += ", milestone: ${json["milestone"]["title"]}";
-              }
-
-              reply(msg);
-            }
-          });
+        event.reply(msg);
+      }).catchError((e) {
+        if (e is NotFound) {
+          event.reply("${fancyPrefix("GitHub Issues")} Issue Not Found");
+        } else {
+          event.reply("${fancyPrefix("GitHub Issues")} Failed to fetch issue information");
         }
       });
     }
   }
 
-  static RegExp REPO_REGEX = new RegExp(
-      r"(?:.*)(?:https?)\:\/\/github\.com\/([A-Za-z0-9\-\.\_\(\)]+)\/([A-Za-z0-9\-\.\_\(\)]+)(?:\/?)(?:.*)");
+  static RegExp REPO_REGEX = new RegExp(r"(?:.*)(?:https?)\:\/\/github\.com\/([A-Za-z0-9\-\.\_\(\)]+)\/([A-Za-z0-9\-\.\_\(\)]+)(?:\/?)(?:.*)");
 
-  static void handleRepository(data) {
-    var message = data['message'];
-    var target = data['target'];
-    var from = data['from'];
-    var network = data['network'];
+  static void handleRepository(MessageEvent event) {
+    var message = event.message;
+    var target = event.target;
+    var from = event.from;
+    var network = event.network;
 
-    void require(String permission, void handle()) {
-      bot.checkPermission((it) => handle(), network, target, from, permission);
+    if (!REPO_REGEX.hasMatch(message) || !enabled) {
+      return;
     }
 
-    void reply(String msg) {
-      bot.sendMessage(network, target, msg);
-    }
-
-    if (REPO_REGEX.hasMatch(message)) {
-      if (!enabled) {
+    for (var match in REPO_REGEX.allMatches(message)) {
+      var it = match[0];
+      var user = match[1];
+      if (user == "blog") return;
+      var repo = match[2];
+      var uar = "${user}/${repo}";
+      var rest = it.substring(it.indexOf(uar) + uar.length).replaceAll(r"/", "");
+      if (rest != "") {
         return;
       }
 
-      require("info.repository", () {
-        for (var match in REPO_REGEX.allMatches(message)) {
-          var it = match[0];
+      github.repositories.getRepository(new RepositorySlug(user, repo)).then((repo) {
+        if (repo.description != null && repo.description.isNotEmpty) {
+          event.reply("${fancyPrefix("GitHub")} ${repo.description}");
+        }
 
-          var user = match[1];
-          
-          if (user == "blog") return;
-          
-          var repo = match[2];
-
-          var uar = "${user}/${repo}";
-
-          var rest = it
-              .substring(it.indexOf(uar) + uar.length)
-              .replaceAll(r"/", "");
-
-          if (rest != "") {
-            return;
-          }
-
-          var url = "https://api.github.com/repos/${uar}";
-
-          GHBot.get(url).then((response) {
-            if (response.statusCode != 200) {
-              if (response.statusCode == 404) {
-                reply(
-                    "${fancyPrefix("GitHub")} Repository does not exist: ${uar}");
-              } else {
-                reply(
-                    "${fancyPrefix("GitHub")} Failed to get repository information (code: ${response.statusCode})");
-              }
-              return;
-            }
-            var json = JSON.decode(response.body);
-            var description = json["description"];
-            var subscribers = json["subscribers_count"];
-            var stars = json["stargazers_count"];
-            var forks = json["forks_count"];
-            var open_issues = json["open_issues_count"];
-            var language = json["language"] == null ? "none" : json["language"];
-            var default_branch = json["default_branch"];
-            var msg = "${fancyPrefix("GitHub")} ";
-
-            if (description != null && description.isNotEmpty) {
-              msg += "${description}";
-              reply(msg);
-            }
-
-            msg =
-                "${fancyPrefix("GitHub")} ${subscribers} subscribers, ${stars} stars, ${forks} forks, ${open_issues} open issues";
-            reply(msg);
-
-            msg =
-                "${fancyPrefix("GitHub")} Language: ${language}, Default Branch: ${default_branch}";
-            reply(msg);
-          });
+        event.reply("${fancyPrefix("GitHub")} ${repo.subscribersCount} subscribers, ${repo.stargazersCount} stars, ${repo.forksCount} forks, ${repo.openIssuesCount} open issues");
+        event.reply("${fancyPrefix("GitHub")} Language: ${repo.language}, Default Branch: ${repo.defaultBranch}");
+      }).catchError((e) {
+        if (e is NotFound || e is RepositoryNotFound) {
+          event.reply("${fancyPrefix("GitHub")} Repository does not exist: ${uar}");
         }
       });
+    }
+  }
+
+  static void handlePullRequest(MessageEvent event) {
+    if (!PR_REGEX.hasMatch(event.message) || !enabled) {
+      return;
+    }
+
+    var matches = PR_REGEX.allMatches(event.message);
+
+    try {
+      for (var match in matches) {
+        var user = match[1];
+        var repo = match[2];
+        var id = int.parse(match[3]);
+
+        github.pullRequests.get(new RepositorySlug(user, repo), id).then((pr) {
+          event.reply("${fancyPrefix('GitHub Pull Requests')} '${pr.title}' by ${pr.user.login}");
+          event.reply("${fancyPrefix('GitHub Pull Requests')} Created: ${friendlyDateTime(pr.createdAt)}");
+          event.reply("${fancyPrefix('GitHub Pull Requests')} Additions: ${pr.additionsCount}, Deletions: ${pr.deletionsCount}");
+
+          if (pr.merged) {
+            event.reply("${fancyPrefix('GitHub Pull Requests')} Merged By: ${pr.mergedBy.login} at ${friendlyDateTime(pr.mergedAt)}");
+          } else {
+            event.reply("${fancyPrefix('GitHub Pull Requests')} Can be Merged: ${pr.mergeable}");
+          }
+        }).catchError((e) {
+          if (e is NotFound) {
+            event.reply("${fancyPrefix('GitHub')} Issue Not Found");
+          }
+        });
+      }
+    } catch (e) {
     }
   }
 
   static Future<List<Map<String, Object>>> teams(String organization) {
-    return get("https://api.github.com/orgs/${organization}/teams").then(
-        (response) {
+    return get("https://api.github.com/orgs/${organization}/teams").then((response) {
       if (response.statusCode != 200) {
         return null;
       }
@@ -618,13 +544,13 @@ class GHBot {
 }
 
 Future<String> googleShorten(String longUrl) {
-  var input = JSON.encode({"longUrl": longUrl});
+  var input = JSON.encode({
+    "longUrl": longUrl
+  });
 
-  return http
-      .post(
-          "https://www.googleapis.com/urlshortener/v1/url?key=AIzaSyBNTRakVvRuGHn6AVIhPXE_B3foJDOxmBU",
-          headers: {"Content-Type": ContentType.JSON.toString()}, body: input)
-      .then((http.Response response) {
+  return http.post("https://www.googleapis.com/urlshortener/v1/url?key=AIzaSyBNTRakVvRuGHn6AVIhPXE_B3foJDOxmBU", headers: {
+    "Content-Type": ContentType.JSON.toString()
+  }, body: input).then((http.Response response) {
     Map<String, Object> resp = JSON.decoder.convert(response.body);
     return new Future.value(resp["id"]);
   });
