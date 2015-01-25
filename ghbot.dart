@@ -424,7 +424,7 @@ class GHBot {
           event.reply("${fancyPrefix("Gists")} ${gist.description}");
         }
 
-        event.reply("${fancyPrefix("Gists")} Creator: ${gist.user.login}");
+        event.reply("${fancyPrefix("Gists")} Creator: ${gist.owner.login}");
 
         if (gist.files.length == 1) {
           event.reply("${fancyPrefix("Gists")} Name: ${gist.files.single.name}, Language: ${gist.files.single.language}");
