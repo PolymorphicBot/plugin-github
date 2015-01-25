@@ -323,13 +323,14 @@ class GHBot {
           var msg = "";
           var status = json["state"];
           var targetUrl = json["target_url"];
+          var sha = json["sha"];
 
-          if (status == "pending" && STATUS_CI[targetUrl] == null) {
-            STATUS_CI[targetUrl] = "pending";
-          } else if (STATUS_CI[targetUrl] != null && STATUS_CI[targetUrl] == "pending" && status == "pending") {
+          if (status == "pending" && STATUS_CI[sha] == null) {
+            STATUS_CI[sha] = "pending";
+          } else if (STATUS_CI[sha] != null && STATUS_CI[sha] == "pending" && status == "pending") {
             return;
-          } else if (STATUS_CI[targetUrl] == "pending" && status == "success" || status == "failure") {
-            STATUS_CI.remove(targetUrl);
+          } else if (STATUS_CI[sha] == "pending" && (status == "success" || status == "failure")) {
+            STATUS_CI.remove(sha);
           }
 
           if (status == "pending") {
@@ -343,7 +344,7 @@ class GHBot {
           msg += " ";
           msg += json["description"];
           msg += " - ";
-          googleShorten(json["target_url"]).then((url) {
+          googleShorten(targetUrl).then((url) {
             msg += "${Color.MAGENTA}${url}${Color.RESET}";
             message(msg);
           });
@@ -420,16 +421,12 @@ class GHBot {
       var id = match[2];
 
       github.gists.getGist(id).then((gist) {
-        if (gist.description != null && gist.description.isNotEmpty) {
-          event.reply("${fancyPrefix("Gists")} ${gist.description}");
-        }
-
-        event.reply("${fancyPrefix("Gists")} Creator: ${gist.owner.login}");
-
         if (gist.files.length == 1) {
-          event.reply("${fancyPrefix("Gists")} Name: ${gist.files.single.name}, Language: ${gist.files.single.language}");
+          event.reply("${fancyPrefix("Gists")} ${gist.files.single.name} by ${gist.owner.login}");
+          event.reply("${fancyPrefix("Gists")} Language: ${gist.files.single.language}");
         } else {
-          event.reply("${fancyPrefix("Gists")} Files: ${gist.files.length}, Size: ${gist.description}");
+          event.reply("${fancyPrefix("Gists")} Creator: ${gist.owner.login}");
+          event.reply("${fancyPrefix("Gists")} Files: ${gist.files.map((it) => it.name).join(", ")}");
         }
       });
     }
