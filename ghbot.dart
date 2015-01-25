@@ -423,6 +423,8 @@ class GHBot {
       github.gists.getGist(id).then((gist) {
         if (gist.files.length == 1) {
           event.reply("${fancyPrefix("Gists")} ${gist.files.single.name} by ${gist.owner.login}");
+          var offset = offsetTimezone(gist.createdAt);
+          event.reply("${fancyPrefix("Gists")} Created: ${friendlyDateTime(offset)}");
           event.reply("${fancyPrefix("Gists")} Language: ${gist.files.single.language}");
         } else {
           event.reply("${fancyPrefix("Gists")} Creator: ${gist.owner.login}");
