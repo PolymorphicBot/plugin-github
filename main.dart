@@ -9,7 +9,6 @@ import "package:irc/client.dart" show Color;
 import 'package:github/server.dart';
 import 'package:github/dates.dart';
 
-import 'package:quiver/async.dart';
 import 'package:polymorphic_bot/api.dart';
 
 part 'ghbot.dart';
@@ -57,8 +56,9 @@ void sendRaw(String network, String line) {
   bot.sendRawLine(network, line);
 }
 
-@EventHandler("message")
-void handleMessage(data) {
-  GHBot.handleIssue(data);
-  GHBot.handleRepository(data);
+@OnMessage()
+void handleMessage(MessageEvent event) {
+  GHBot.handleIssue(event);
+  GHBot.handlePullRequest(event);
+  GHBot.handleRepository(event);
 }
