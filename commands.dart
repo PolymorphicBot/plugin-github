@@ -32,7 +32,8 @@ void syncChannelCommand(CommandEvent event) {
 @Command("gh-limit", permission: "command.limit")
 void limitCommand(CommandEvent event) {
   github.misc.getRateLimit().then((limit) {
-    event.reply("${fancyPrefix("GitHub")} Limit: ${limit.limit}, Remaining: ${limit.remaining}, Resets: ${friendlyDateTime(limit.resets)}");
+    event.reply(
+        "${fancyPrefix("GitHub")} Limit: ${limit.limit}, Remaining: ${limit.remaining}, Resets: ${friendlyDateTime(limit.resets)}");
   });
 }
 
@@ -65,7 +66,8 @@ void membersCommand(CommandEvent event) {
     github.organizations.listTeamMembers(t.id).toList().then((members) {
       var memberNames = members.map((it) => it.login);
 
-      event.reply("${fancyPrefix("GitHub Teams")} ${team}: ${memberNames.join(", ")}");
+      event.reply(
+          "${fancyPrefix("GitHub Teams")} ${team}: ${memberNames.join(", ")}");
     }).catchError((e) {
       event.reply("${fancyPrefix("GitHub Teams")} Failed to get team members.");
     });
@@ -132,8 +134,9 @@ void starsCommand(CommandEvent event) {
     return;
   }
 
-  var user = event.args.length == 2 ? event.args[0] : GHBot.getOrganization(event.network, event.channel);
-var repo = event.args.length == 1 ? event.args[0] : event.args[1];
+  var user = event.args.length == 2 ? event.args[0] :
+      GHBot.getOrganization(event.network, event.channel);
+  var repo = event.args.length == 1 ? event.args[0] : event.args[1];
 
   var slug = new RepositorySlug(user, repo);
 
@@ -147,4 +150,3 @@ var repo = event.args.length == 1 ? event.args[0] : event.args[1];
     }
   });
 }
-

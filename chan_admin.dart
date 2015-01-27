@@ -1,10 +1,8 @@
 part of ghbot;
 
 Future<Map<String, Object>> getChannelInfo(String network, String channel) {
-  return plugin.callMethod("getChannel", {
-    "network": network,
-    "channel": channel
-  });
+  return plugin.callMethod(
+      "getChannel", {"network": network, "channel": channel});
 }
 
 String getUserName(String name) {
@@ -32,19 +30,21 @@ void syncTeamChannel(String network, String channel) {
   List<Map<String, dynamic>> channels = conf["channels"];
   if (!conf['enabled']) return;
 
-  if (!channels.any((it) => it["network"] == network && it["channel"] == channel)) {
+  if (!channels.any(
+      (it) => it["network"] == network && it["channel"] == channel)) {
     return;
   }
 
-  var c = channels.firstWhere((it) => it["network"] == network && it["channel"] == channel);
-  
+  var c = channels.firstWhere(
+      (it) => it["network"] == network && it["channel"] == channel);
+
   if (c["enabled"] == false) {
     return;
   }
-  
+
   var opsTeam = c["ops_team"];
   var voicesTeam = c["voices_team"];
-  
+
   bot.getChannel(network, channel).then((info) {
     github.organizations.listTeamMembers(opsTeam).toList().then((members) {
       for (var member in members) {

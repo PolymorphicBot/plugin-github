@@ -31,20 +31,20 @@ void main(List<String> args, port) {
 @Start()
 void start() {
   connected = true;
-  
+
   initGitHub();
   bot = plugin.getBot();
-  
+
   print("[GitHub] Loading Plugin");
-  
+
   sleep(new Duration(seconds: 1));
   initialize();
-  
+
   plugin.onShutdown(() {
     print("[GitHub] Shutting Down");
     github.dispose();
   });
-  
+
   plugin.createHttpRouter().then((router) {
     router.addRoute("/hook", (request) {
       GHBot.handleHook(request);

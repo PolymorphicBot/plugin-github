@@ -5,7 +5,7 @@ void initialize() {
   var update = ([_]) {
     bot.config.then((c) {
       config = c;
-      
+
       if (config['github'] == null) {
         GHBot.enabled = false;
         return;
@@ -13,11 +13,11 @@ void initialize() {
 
       GHBot.token = config["github"]["token"];
       GHBot.organization = config["github"]["organization"];
-      
+
       if (config['github']['enabled'] == false) {
         GHBot.enabled = false;
       }
-      
+
       if (first) {
         github = new GitHub(auth: new Authentication.withToken(GHBot.token));
         first = false;
