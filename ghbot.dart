@@ -289,8 +289,10 @@ class GHBot {
           var action = json["action"];
 
           if (action == "created") {
-            message(
-                "${Color.OLIVE}${sender["login"]}${Color.RESET} commented on issue #${issue["number"]}");
+            GHBot.shorten(json["comment"]["html_url"]).then((url) {
+              message(
+                "${Color.OLIVE}${sender["login"]}${Color.RESET} commented on issue #${issue["number"]} - $url");
+            });
           }
 
           break;
